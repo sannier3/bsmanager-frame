@@ -2345,34 +2345,43 @@ except Exception:
 }
 
 list_beat_saber_instances() {
+    # mapfile + for: avoid while-read EOF status under `set -e` which can
+    # abort the function before printing matches (empty menu / diagnose).
     local root dir name
-    local -a found=()
+    local -a found=() roots=() dirs=()
     local -A seen=()
 
-    while IFS= read -r root; do
+    mapfile -t roots < <(beat_saber_instances_root) || true
+    for root in "${roots[@]}"; do
         [[ -n "$root" && -d "$root" ]] || continue
-        # Avoid pipe+while subshell so found[] is populated in this shell
-        while IFS= read -r -d '' dir; do
+        dirs=()
+        mapfile -t dirs < <(find "$root" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort) || true
+        for dir in "${dirs[@]}"; do
+            [[ -n "$dir" ]] || continue
             if [[ -f "$dir/Beat Saber.exe" || -f "$dir/BeatSaber.exe" ]]; then
-                name="$(basename "$dir")"
+                name="$(basename -- "$dir")"
                 [[ -n "$name" ]] || continue
                 if [[ -z "${seen[$name]:-}" ]]; then
                     seen["$name"]=1
                     found+=("$name")
                 fi
             fi
-        done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
-    done < <(beat_saber_instances_root)
+        done
+    done
 
     if [[ "${#found[@]}" -eq 0 ]]; then
         return 0
     fi
 
-    if command -v python3 >/dev/null 2>&1; then
-        printf '%s\n' "${found[@]}" | py_natural_sort || printf '%s\n' "${found[@]}"
-    else
-        printf '%s\n' "${found[@]}" | sort -V 2>/dev/null || printf '%s\n' "${found[@]}"
+    # Prefer sort -V (no stdin clash). Fall back to py_natural_sort, then plain printf.
+    if printf '%s\n' "${found[@]}" | sort -V 2>/dev/null; then
+        return 0
     fi
+    if command -v python3 >/dev/null 2>&1; then
+        printf '%s\n' "${found[@]}" | py_natural_sort && return 0
+    fi
+    printf '%s\n' "${found[@]}"
+    return 0
 }
 
 select_beat_saber_version() {
@@ -2384,7 +2393,11 @@ select_beat_saber_version() {
 
     if [[ "$count" -eq 0 ]]; then
         error "$(t bs_version_none_die "$root_hint")"
-        debug "Also searched custom installation-folder BSInstances if configured"
+        local r
+        while IFS= read -r r || [[ -n "$r" ]]; do
+            [[ -n "$r" ]] || continue
+            error "  searched: $r$([[ -d $r ]] && echo ' [dir ok]' || echo ' [missing]')"
+        done < <(beat_saber_instances_root)
         die "$(t bs_version_none_die "$root_hint")" || return 1
     fi
     if [[ -n "$OPT_BS_VERSION" ]]; then
