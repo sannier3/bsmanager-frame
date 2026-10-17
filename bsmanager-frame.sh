@@ -153,12 +153,13 @@ action_end() {
 
 info() {
     _log_to_file INFO "$*"
-    printf '%s %s\n' "$(_c 34 '[INFO]')" "$*"
+    # stderr: keep stdout clean for functions that return paths/values via capture
+    printf '%s %s\n' "$(_c 34 '[INFO]')" "$*" >&2
 }
 
 success() {
     _log_to_file OK "$*"
-    printf '%s %s\n' "$(_c 32 '[OK]')" "$*"
+    printf '%s %s\n' "$(_c 32 '[OK]')" "$*" >&2
 }
 
 warn() {
@@ -3350,9 +3351,11 @@ cmd_setup() {
 # =============================================================================
 
 menu_launchers() {
-    local v
+    local v wrapper
     v="$(select_beat_saber_version)" || return 1
-    create_beat_saber_wrapper "$v" >/dev/null || return 1
+    wrapper="$(create_beat_saber_wrapper "$v")" || return 1
+    success "Lanceur prêt: $wrapper"
+    info "Menu 5 = entrée bureau + réparation raccourci Steam (en plus du wrapper)."
 }
 
 show_menu() {
