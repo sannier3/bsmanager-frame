@@ -1,0 +1,15 @@
+*.log
+*.tmp
+*.bak
+*.backup
+.env
+.env.*
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+tmp/
+build/
+dist/
+artifacts/
+coverage/
