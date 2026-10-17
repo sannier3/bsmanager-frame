@@ -20,3 +20,18 @@ jobs:
 
       - name: ShellCheck
         run: shellcheck bsmanager-frame.sh
+
+      - name: Smoke --help
+        run: bash bsmanager-frame.sh --help
+
+      - name: Smoke --version
+        run: bash bsmanager-frame.sh --version
+
+      - name: Smoke dry-run diagnose
+        run: bash bsmanager-frame.sh --non-interactive --force --dry-run diagnose
+
+      - name: Non-interactive must not block on TTY
+        run: |
+          # Must complete without waiting for /dev/tty input
+          timeout 30s bash bsmanager-frame.sh --non-interactive --force --dry-run diagnose
+          timeout 15s bash bsmanager-frame.sh --non-interactive --version

@@ -59,6 +59,10 @@ FLAG_DRY_RUN=0
 FLAG_VERBOSE=0
 FLAG_FORCE=0
 FLAG_REMOVE_DATA=0
+FLAG_ALLOW_FLATPAK=0
+if [[ "${BSMF_ALLOW_FLATPAK:-0}" == "1" || "${BSMF_ALLOW_FLATPAK:-}" == "true" ]]; then
+    FLAG_ALLOW_FLATPAK=1
+fi
 
 OPT_BS_VERSION=""
 OPT_COMPATDATA=""
@@ -316,7 +320,22 @@ _t_en() {
         ask_remove_bsmanager) printf '%s' "Remove native BSManager application (~/.local/opt/bs-manager)?" ;;
         ask_shortcuts_now) printf '%s' "Create/repair launchers and shortcuts now?" ;;
         ask_steam_install) printf '%s' "Request Steam to install %s now?" ;;
-        ask_flatpak) printf '%s' "Install Flatpak fallback (%s)?" ;;
+        ask_flatpak) printf '%s' "Install Flatpak fallback (%s)? (advanced, explicit opt-in)" ;;
+        bsm_native_preserved) printf '%s' "Current native ARM64 BSManager installation preserved" ;;
+        bsm_no_native_asset) printf '%s' "Compatible native ARM64 release asset: not available" ;;
+        bsm_latest_release) printf '%s' "Latest upstream BSManager release: %s" ;;
+        bsm_kept_unchanged) printf '%s' "Current native ARM64 installation kept unchanged" ;;
+        bsm_no_native_fresh) printf '%s' "No native ARM64 BSManager release asset is currently available upstream." ;;
+        bsm_use_custom) printf '%s' "Use a custom native ARM64 build with --bsmanager-url URL or --bsmanager-dir PATH" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak is available only as an explicit advanced fallback (--allow-flatpak)." ;;
+        bsm_dup_warn) printf '%s' "Native and Flatpak BSManager installations coexist. This may create duplicate BSManager desktop / SteamVR application entries." ;;
+        bsm_prefix_unsupported) printf '%s' "Installed BSManager does not support a separate Proton for modding operations. Use a BSManager build containing PR #1136." ;;
+        bsm_prefix_unknown) printf '%s' "Could not determine whether this BSManager build supports prefix-proton-folder; not writing that key." ;;
+        bsm_running_config) printf '%s' "BSManager is currently running. Close BSManager before changing its configuration." ;;
+        bsm_launch_once) printf '%s' "Launch BSManager once, then rerun: bsmanager-frame proton" ;;
+        bsm_flatpak_need_flag) printf '%s' "Flatpak operations require --allow-flatpak (disabled by default)." ;;
+        bsm_flatpak_system_exists) printf '%s' "System Flatpak BSManager already installed; refusing to add a second user Flatpak copy." ;;
+        bsm_flatpak_update_hint) printf '%s' "Flatpak BSManager is installed. Re-run with --allow-flatpak to manage Flatpak updates." ;;
         unknown_command) printf '%s' "Unknown command: %s" ;;
         unknown_option) printf '%s' "Unknown option: %s" ;;
         *) printf '%s' "$1" ;;
@@ -370,7 +389,22 @@ _t_fr() {
         ask_remove_bsmanager) printf '%s' "Supprimer l'application native BSManager (~/.local/opt/bs-manager) ?" ;;
         ask_shortcuts_now) printf '%s' "Créer/réparer les lanceurs et raccourcis maintenant ?" ;;
         ask_steam_install) printf '%s' "Demander à Steam d'installer %s maintenant ?" ;;
-        ask_flatpak) printf '%s' "Installer le fallback Flatpak (%s) ?" ;;
+        ask_flatpak) printf '%s' "Installer le fallback Flatpak (%s) ? (avancé, opt-in explicite)" ;;
+        bsm_native_preserved) printf '%s' "Installation native ARM64 BSManager actuelle conservée" ;;
+        bsm_no_native_asset) printf '%s' "Artefact natif ARM64 compatible : indisponible" ;;
+        bsm_latest_release) printf '%s' "Dernière release BSManager upstream : %s" ;;
+        bsm_kept_unchanged) printf '%s' "Installation native ARM64 actuelle inchangée" ;;
+        bsm_no_native_fresh) printf '%s' "Aucun artefact BSManager natif ARM64 n'est disponible upstream pour le moment." ;;
+        bsm_use_custom) printf '%s' "Utilisez un build natif ARM64 custom avec --bsmanager-url URL ou --bsmanager-dir PATH" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak n'est disponible qu'en fallback avancé explicite (--allow-flatpak)." ;;
+        bsm_dup_warn) printf '%s' "BSManager natif et Flatpak coexistent. Cela peut créer des entrées BSManager en double dans le bureau / SteamVR." ;;
+        bsm_prefix_unsupported) printf '%s' "Ce BSManager ne gère pas un Proton séparé pour le modding. Utilisez un build contenant la PR #1136." ;;
+        bsm_prefix_unknown) printf '%s' "Impossible de déterminer le support de prefix-proton-folder ; cette clé ne sera pas écrite." ;;
+        bsm_running_config) printf '%s' "BSManager est en cours d'exécution. Fermez BSManager avant de modifier sa configuration." ;;
+        bsm_launch_once) printf '%s' "Lancez BSManager une fois, puis relancez : bsmanager-frame proton" ;;
+        bsm_flatpak_need_flag) printf '%s' "Les opérations Flatpak exigent --allow-flatpak (désactivé par défaut)." ;;
+        bsm_flatpak_system_exists) printf '%s' "BSManager Flatpak système déjà installé ; refus d'ajouter une seconde copie utilisateur." ;;
+        bsm_flatpak_update_hint) printf '%s' "BSManager Flatpak est installé. Relancez avec --allow-flatpak pour gérer les mises à jour Flatpak." ;;
         unknown_command) printf '%s' "Commande inconnue : %s" ;;
         unknown_option) printf '%s' "Option inconnue : %s" ;;
         *) return 1 ;;
@@ -424,7 +458,22 @@ _t_es() {
         ask_remove_bsmanager) printf '%s' "¿Eliminar la aplicación nativa BSManager (~/.local/opt/bs-manager)?" ;;
         ask_shortcuts_now) printf '%s' "¿Crear/reparar lanzadores y accesos directos ahora?" ;;
         ask_steam_install) printf '%s' "¿Pedir a Steam que instale %s ahora?" ;;
-        ask_flatpak) printf '%s' "¿Instalar el fallback Flatpak (%s)?" ;;
+        ask_flatpak) printf '%s' "¿Instalar el fallback Flatpak (%s)? (avanzado, opt-in explícito)" ;;
+        bsm_native_preserved) printf '%s' "Instalación nativa ARM64 de BSManager conservada" ;;
+        bsm_no_native_asset) printf '%s' "Artefacto nativo ARM64 compatible: no disponible" ;;
+        bsm_latest_release) printf '%s' "Última versión upstream de BSManager: %s" ;;
+        bsm_kept_unchanged) printf '%s' "Instalación nativa ARM64 actual sin cambios" ;;
+        bsm_no_native_fresh) printf '%s' "No hay artefacto nativo ARM64 de BSManager disponible upstream por ahora." ;;
+        bsm_use_custom) printf '%s' "Use un build nativo ARM64 personalizado con --bsmanager-url URL o --bsmanager-dir PATH" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak solo está disponible como fallback avanzado explícito (--allow-flatpak)." ;;
+        bsm_dup_warn) printf '%s' "Coexisten BSManager nativo y Flatpak. Esto puede crear entradas duplicadas en el escritorio / SteamVR." ;;
+        bsm_prefix_unsupported) printf '%s' "Este BSManager no admite un Proton separado para modding. Use un build con la PR #1136." ;;
+        bsm_prefix_unknown) printf '%s' "No se pudo determinar el soporte de prefix-proton-folder; no se escribirá esa clave." ;;
+        bsm_running_config) printf '%s' "BSManager está en ejecución. Ciérrelo antes de cambiar su configuración." ;;
+        bsm_launch_once) printf '%s' "Abra BSManager una vez y vuelva a ejecutar: bsmanager-frame proton" ;;
+        bsm_flatpak_need_flag) printf '%s' "Las operaciones Flatpak requieren --allow-flatpak (desactivado por defecto)." ;;
+        bsm_flatpak_system_exists) printf '%s' "Ya hay BSManager Flatpak de sistema; no se instalará una segunda copia de usuario." ;;
+        bsm_flatpak_update_hint) printf '%s' "BSManager Flatpak está instalado. Use --allow-flatpak para gestionar actualizaciones Flatpak." ;;
         unknown_command) printf '%s' "Comando desconocido: %s" ;;
         unknown_option) printf '%s' "Opción desconocida: %s" ;;
         *) return 1 ;;
@@ -478,7 +527,22 @@ _t_de() {
         ask_remove_bsmanager) printf '%s' "Native BSManager-Anwendung entfernen (~/.local/opt/bs-manager)?" ;;
         ask_shortcuts_now) printf '%s' "Starter und Verknüpfungen jetzt erstellen/reparieren?" ;;
         ask_steam_install) printf '%s' "Steam bitten, %s jetzt zu installieren?" ;;
-        ask_flatpak) printf '%s' "Flatpak-Fallback (%s) installieren?" ;;
+        ask_flatpak) printf '%s' "Flatpak-Fallback (%s) installieren? (erweitert, explizites Opt-in)" ;;
+        bsm_native_preserved) printf '%s' "Aktuelle native ARM64-BSManager-Installation beibehalten" ;;
+        bsm_no_native_asset) printf '%s' "Kompatibles natives ARM64-Release-Asset: nicht verfügbar" ;;
+        bsm_latest_release) printf '%s' "Neueste Upstream-BSManager-Version: %s" ;;
+        bsm_kept_unchanged) printf '%s' "Aktuelle native ARM64-Installation unverändert" ;;
+        bsm_no_native_fresh) printf '%s' "Derzeit ist kein natives ARM64-BSManager-Asset upstream verfügbar." ;;
+        bsm_use_custom) printf '%s' "Nutzen Sie einen eigenen nativen ARM64-Build mit --bsmanager-url URL oder --bsmanager-dir PATH" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak ist nur als expliziter erweiterter Fallback verfügbar (--allow-flatpak)." ;;
+        bsm_dup_warn) printf '%s' "Native und Flatpak-BSManager-Installationen koexistieren. Das kann doppelte BSManager-Einträge in Desktop/SteamVR erzeugen." ;;
+        bsm_prefix_unsupported) printf '%s' "Diese BSManager-Version unterstützt kein separates Modding-Proton. Nutzen Sie einen Build mit PR #1136." ;;
+        bsm_prefix_unknown) printf '%s' "Unterstützung für prefix-proton-folder nicht ermittelbar; Schlüssel wird nicht geschrieben." ;;
+        bsm_running_config) printf '%s' "BSManager läuft gerade. Schließen Sie BSManager, bevor Sie die Konfiguration ändern." ;;
+        bsm_launch_once) printf '%s' "Starten Sie BSManager einmal, dann erneut: bsmanager-frame proton" ;;
+        bsm_flatpak_need_flag) printf '%s' "Flatpak-Operationen erfordern --allow-flatpak (standardmäßig deaktiviert)." ;;
+        bsm_flatpak_system_exists) printf '%s' "System-Flatpak-BSManager bereits installiert; keine zweite User-Kopie." ;;
+        bsm_flatpak_update_hint) printf '%s' "Flatpak-BSManager ist installiert. Mit --allow-flatpak erneut ausführen für Flatpak-Updates." ;;
         unknown_command) printf '%s' "Unbekannter Befehl: %s" ;;
         unknown_option) printf '%s' "Unbekannte Option: %s" ;;
         *) return 1 ;;
@@ -532,7 +596,22 @@ _t_sw() {
         ask_remove_bsmanager) printf '%s' "Ondoa programu asilia ya BSManager (~/.local/opt/bs-manager)?" ;;
         ask_shortcuts_now) printf '%s' "Unda/rekebisha vizinduzi na njia za mkato sasa?" ;;
         ask_steam_install) printf '%s' "Omba Steam isakinishe %s sasa?" ;;
-        ask_flatpak) printf '%s' "Sakinisha fallback ya Flatpak (%s)?" ;;
+        ask_flatpak) printf '%s' "Sakinisha fallback ya Flatpak (%s)? (ya juu, opt-in wazi)" ;;
+        bsm_native_preserved) printf '%s' "Usakinishaji wa asili wa BSManager ARM64 umehifadhiwa" ;;
+        bsm_no_native_asset) printf '%s' "Faili asilia ya ARM64 inayooana: haipatikani" ;;
+        bsm_latest_release) printf '%s' "Toleo jipya la BSManager upstream: %s" ;;
+        bsm_kept_unchanged) printf '%s' "Usakinishaji wa asili wa ARM64 haujabadilishwa" ;;
+        bsm_no_native_fresh) printf '%s' "Hakuna faili asilia ya BSManager ARM64 inayopatikana upstream kwa sasa." ;;
+        bsm_use_custom) printf '%s' "Tumia build asilia ya ARM64 kwa --bsmanager-url URL au --bsmanager-dir PATH" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak inapatikana tu kama fallback ya juu (--allow-flatpak)." ;;
+        bsm_dup_warn) printf '%s' "BSManager asilia na Flatpak zipo pamoja. Hii inaweza kuunda maingizo maradufu ya BSManager kwenye desktop / SteamVR." ;;
+        bsm_prefix_unsupported) printf '%s' "BSManager hii haiungi mkono Proton tofauti kwa modding. Tumia build yenye PR #1136." ;;
+        bsm_prefix_unknown) printf '%s' "Haiwezi kubainisha usaidizi wa prefix-proton-folder; funguo hiyo haitaandikwa." ;;
+        bsm_running_config) printf '%s' "BSManager inaendeshwa sasa. Funga BSManager kabla ya kubadilisha usanidi." ;;
+        bsm_launch_once) printf '%s' "Anzisha BSManager mara moja, kisha endesha tena: bsmanager-frame proton" ;;
+        bsm_flatpak_need_flag) printf '%s' "Operesheni za Flatpak zinahitaji --allow-flatpak (imezimwa kwa chaguo-msingi)." ;;
+        bsm_flatpak_system_exists) printf '%s' "BSManager Flatpak ya mfumo tayari ipo; hakutakuwa na nakala ya pili ya mtumiaji." ;;
+        bsm_flatpak_update_hint) printf '%s' "BSManager Flatpak imesakinishwa. Endesha tena na --allow-flatpak kusasisha Flatpak." ;;
         unknown_command) printf '%s' "Amri haijulikani: %s" ;;
         unknown_option) printf '%s' "Chaguo halijulikani: %s" ;;
         *) return 1 ;;
@@ -1584,13 +1663,22 @@ ensure_steam_app() {
 }
 
 ensure_required_proton_stack() {
-    local runtime_path proton_path experimental_path
+    local runtime_path="" proton_path experimental_path
 
-    runtime_path="$(ensure_steam_app "$STEAM_RUNTIME_ARM64_APPID" "$STEAM_RUNTIME_LABEL")" || return 1
+    # 1–2: install/validate Proton titles first (Steam may pull the runtime as a dependency)
     proton_path="$(ensure_steam_app "$PROTON_STABLE_APPID" "$PROTON_STABLE_LABEL")" || return 1
     validate_proton_install "$proton_path" "$PROTON_STABLE_LABEL" || return 1
+
     experimental_path="$(ensure_steam_app "$PROTON_EXPERIMENTAL_APPID" "$PROTON_EXPERIMENTAL_LABEL")" || return 1
     validate_proton_install "$experimental_path" "$PROTON_EXPERIMENTAL_LABEL" || return 1
+
+    # 3–4: verify runtime afterward; only request install if still missing
+    if runtime_path="$(resolve_app_install_path "$STEAM_RUNTIME_ARM64_APPID" 2>/dev/null)"; then
+        success "$STEAM_RUNTIME_LABEL: installed ($runtime_path)"
+    else
+        info "$STEAM_RUNTIME_LABEL not found after Proton installs; requesting explicitly"
+        runtime_path="$(ensure_steam_app "$STEAM_RUNTIME_ARM64_APPID" "$STEAM_RUNTIME_LABEL")" || return 1
+    fi
 
     success "Proton stack validated"
     printf '%s\n%s\n%s\n' "$runtime_path" "$proton_path" "$experimental_path"
@@ -1605,23 +1693,166 @@ ensure_user_dirs() {
         "$BSMANAGER_DATA_DIR" "$APPLICATIONS_DIR" "$HOME/.local/opt"
 }
 
-bsmanager_install_type() {
-    if [[ -x "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
+is_bsmanager_native_installed() {
+    [[ -x "$BSMANAGER_INSTALL_DIR/bs-manager" ]] || return 1
+    is_arm64_elf "$BSMANAGER_INSTALL_DIR/bs-manager"
+}
+
+is_bsmanager_flatpak_user_installed() {
+    command -v flatpak >/dev/null 2>&1 || return 1
+    flatpak info --user "$FLATPAK_APP_ID_EXPECTED" >/dev/null 2>&1
+}
+
+is_bsmanager_flatpak_system_installed() {
+    command -v flatpak >/dev/null 2>&1 || return 1
+    flatpak info --system "$FLATPAK_APP_ID_EXPECTED" >/dev/null 2>&1
+}
+
+# Returns: native | flatpak-user | flatpak-system | native+flatpak | none | unknown
+detect_bsmanager_installation_type() {
+    local native=0 fu=0 fs=0
+    is_bsmanager_native_installed && native=1
+    is_bsmanager_flatpak_user_installed && fu=1
+    is_bsmanager_flatpak_system_installed && fs=1
+
+    if [[ "$native" -eq 1 && ( "$fu" -eq 1 || "$fs" -eq 1 ) ]]; then
+        printf 'native+flatpak\n'
+        return 0
+    fi
+    if [[ "$native" -eq 1 ]]; then
         printf 'native\n'
         return 0
     fi
-    if command -v flatpak >/dev/null 2>&1; then
-        if flatpak info --user "$FLATPAK_APP_ID_EXPECTED" >/dev/null 2>&1 \
-            || flatpak info "$FLATPAK_APP_ID_EXPECTED" >/dev/null 2>&1; then
-            printf 'flatpak\n'
-            return 0
-        fi
+    if [[ "$fu" -eq 1 && "$fs" -eq 1 ]]; then
+        # Both Flatpak scopes without native — diagnose expands details
+        printf 'unknown\n'
+        return 0
+    fi
+    if [[ "$fu" -eq 1 ]]; then
+        printf 'flatpak-user\n'
+        return 0
+    fi
+    if [[ "$fs" -eq 1 ]]; then
+        printf 'flatpak-system\n'
+        return 0
     fi
     if command -v bs-manager >/dev/null 2>&1; then
-        printf 'path\n'
+        printf 'unknown\n'
         return 0
     fi
     printf 'none\n'
+}
+
+# Backward-compatible alias used by older call sites
+bsmanager_install_type() {
+    detect_bsmanager_installation_type
+}
+
+warn_bsmanager_duplicate_installations() {
+    local itype
+    itype="$(detect_bsmanager_installation_type)"
+    if [[ "$itype" == "native+flatpak" ]]; then
+        warn "$(t bsm_dup_warn)"
+        log_action WARN "bsmanager_duplicate native+flatpak"
+        return 0
+    fi
+    if is_bsmanager_flatpak_user_installed && is_bsmanager_flatpak_system_installed; then
+        warn "Flatpak user and system BSManager installations both present"
+        log_action WARN "bsmanager_duplicate flatpak-user+flatpak-system"
+    fi
+}
+
+is_bsmanager_running() {
+    local pid exe cmdline want
+    want="$(canonical_path "$BSMANAGER_INSTALL_DIR/bs-manager" 2>/dev/null || printf '%s' "$BSMANAGER_INSTALL_DIR/bs-manager")"
+
+    if [[ -x "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
+        while IFS= read -r pid; do
+            [[ -z "$pid" ]] && continue
+            exe="$(readlink -f "/proc/$pid/exe" 2>/dev/null || true)"
+            if [[ -n "$exe" && "$exe" == "$want" ]]; then
+                return 0
+            fi
+            cmdline="$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)"
+            if [[ "$cmdline" == *"$BSMANAGER_INSTALL_DIR/bs-manager"* ]]; then
+                return 0
+            fi
+        done < <(pgrep -x "bs-manager" 2>/dev/null || true)
+    fi
+
+    if command -v flatpak >/dev/null 2>&1; then
+        if flatpak ps 2>/dev/null | grep -F "$FLATPAK_APP_ID_EXPECTED" >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Returns: supported | unsupported | unknown
+bsmanager_supports_prefix_proton() {
+    local hit="" asar candidate
+    local -a search_roots=()
+
+    if [[ -d "$BSMANAGER_INSTALL_DIR" ]]; then
+        search_roots+=("$BSMANAGER_INSTALL_DIR")
+    fi
+
+    # Flatpak exported files (user then system), if present
+    for candidate in \
+        "$HOME/.local/share/flatpak/app/${FLATPAK_APP_ID_EXPECTED}/current/active/files" \
+        "/var/lib/flatpak/app/${FLATPAK_APP_ID_EXPECTED}/current/active/files"; do
+        [[ -d "$candidate" ]] && search_roots+=("$candidate")
+    done
+
+    if [[ "${#search_roots[@]}" -eq 0 ]]; then
+        printf 'unknown\n'
+        return 0
+    fi
+
+    for candidate in "${search_roots[@]}"; do
+        asar="$candidate/resources/app.asar"
+        if [[ -f "$asar" ]]; then
+            if grep -a -F -q 'prefix-proton-folder' "$asar" 2>/dev/null; then
+                printf 'supported\n'
+                return 0
+            fi
+            # asar present but token missing → unsupported for this install
+            printf 'unsupported\n'
+            return 0
+        fi
+    done
+
+    # Fallback: scan install tree for the token (avoid requiring asar tooling)
+    for candidate in "${search_roots[@]}"; do
+        if hit="$(grep -aRl -F -- 'prefix-proton-folder' "$candidate" 2>/dev/null | head -n1)"; then
+            if [[ -n "$hit" ]]; then
+                printf 'supported\n'
+                return 0
+            fi
+        fi
+    done
+
+    # Resources exist but no token found
+    for candidate in "${search_roots[@]}"; do
+        if [[ -d "$candidate/resources" || -f "$candidate/bs-manager" ]]; then
+            printf 'unsupported\n'
+            return 0
+        fi
+    done
+
+    printf 'unknown\n'
+}
+
+config_has_prefix_proton_key() {
+    local cfg="$1"
+    [[ -f "$cfg" ]] || return 1
+    require_python3
+    python3 -c '
+import json,sys
+with open(sys.argv[1],encoding="utf-8") as f:
+    data=json.load(f)
+sys.exit(0 if isinstance(data,dict) and "prefix-proton-folder" in data else 1)
+' "$cfg" 2>/dev/null
 }
 
 file_arch_of() {
@@ -1767,7 +1998,29 @@ install_bsmanager_flatpak_bundle() {
     local name="$2"
     local tmp bundle
 
+    if [[ "$FLAG_ALLOW_FLATPAK" -ne 1 ]]; then
+        die "$(t bsm_flatpak_need_flag)"
+    fi
     command -v flatpak >/dev/null 2>&1 || die "flatpak is not available"
+
+    if is_bsmanager_flatpak_system_installed && ! is_bsmanager_flatpak_user_installed; then
+        error "$(t bsm_flatpak_system_exists)"
+        return 1
+    fi
+    if is_bsmanager_flatpak_system_installed && is_bsmanager_flatpak_user_installed; then
+        warn "Flatpak user and system BSManager both present"
+    fi
+
+    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 && "$FLAG_YES" -ne 1 ]]; then
+        die "Flatpak install requires --yes in non-interactive mode"
+    fi
+    if [[ "$FLAG_NON_INTERACTIVE" -eq 0 ]]; then
+        if ! prompt_confirm "$(t ask_flatpak "$name")"; then
+            info "Flatpak installation skipped"
+            return 1
+        fi
+    fi
+
     tmp="$(make_temp_dir)"
     bundle="$tmp/$name"
     download_file "$url" "$bundle"
@@ -1776,14 +2029,70 @@ install_bsmanager_flatpak_bundle() {
         return 0
     fi
     flatpak install --user -y "$bundle"
-    success "BSManager Flatpak installed (user)"
+    if flatpak info --user "$FLATPAK_APP_ID_EXPECTED" >/dev/null 2>&1; then
+        success "BSManager Flatpak installed (user): $FLATPAK_APP_ID_EXPECTED"
+    else
+        warn "Flatpak install finished but $FLATPAK_APP_ID_EXPECTED not confirmed via flatpak info --user"
+    fi
+}
+
+handle_no_native_upstream_asset() {
+    local tag="$1"
+    local flatpak_name="${2:-}"
+    local flatpak_url="${3:-}"
+    local itype
+    itype="$(detect_bsmanager_installation_type)"
+
+    info "$(t bsm_latest_release "${tag:-unknown}")"
+    info "$(t bsm_no_native_asset)"
+
+    if is_bsmanager_native_installed; then
+        success "$(t bsm_native_preserved)"
+        info "$(t bsm_kept_unchanged)"
+        info "Advanced options: --bsmanager-url URL | --bsmanager-dir PATH | --allow-flatpak"
+        return 0
+    fi
+
+    case "$itype" in
+        flatpak-user|flatpak-system|unknown)
+            if [[ "$FLAG_ALLOW_FLATPAK" -eq 1 && -n "$flatpak_url" ]]; then
+                install_bsmanager_flatpak_bundle "$flatpak_url" "${flatpak_name:-bsmanager.flatpak}" || return 1
+                return 0
+            fi
+            info "$(t bsm_flatpak_update_hint)"
+            info "$(t bsm_use_custom)"
+            return 0
+            ;;
+    esac
+
+    # Fresh install, no native asset
+    error "$(t bsm_no_native_fresh)"
+    info "$(t bsm_use_custom)"
+    info "$(t bsm_flatpak_advanced)"
+    if [[ "$FLAG_ALLOW_FLATPAK" -eq 1 && -n "$flatpak_url" ]]; then
+        install_bsmanager_flatpak_bundle "$flatpak_url" "${flatpak_name:-bsmanager.flatpak}" || return 1
+        return 0
+    fi
+    return 1
 }
 
 cmd_install_bsmanager() {
     ensure_user_dirs
+    warn_bsmanager_duplicate_installations || true
 
     if [[ -n "$OPT_BSMANAGER_DIR" ]]; then
         [[ -d "$OPT_BSMANAGER_DIR" ]] || die "BSManager dir not found: $OPT_BSMANAGER_DIR"
+        if is_bsmanager_flatpak_user_installed || is_bsmanager_flatpak_system_installed; then
+            if [[ "$FLAG_NON_INTERACTIVE" -eq 1 && "$FLAG_YES" -ne 1 ]]; then
+                die "Native install would coexist with Flatpak. Re-run with --yes to confirm, or remove Flatpak first."
+            fi
+            if [[ "$FLAG_NON_INTERACTIVE" -eq 0 ]]; then
+                warn "$(t bsm_dup_warn)"
+                if ! prompt_confirm "Install/replace native BSManager while Flatpak is also present?"; then
+                    return 1
+                fi
+            fi
+        fi
         install_native_bsmanager_from_dir "$OPT_BSMANAGER_DIR"
         return 0
     fi
@@ -1795,11 +2104,10 @@ cmd_install_bsmanager() {
         download_file "$OPT_BSMANAGER_URL" "$archive"
         case "$OPT_BSMANAGER_URL" in
             *.flatpak)
-                install_bsmanager_flatpak_bundle "$OPT_BSMANAGER_URL" "custom.flatpak"
+                install_bsmanager_flatpak_bundle "$OPT_BSMANAGER_URL" "custom.flatpak" || return 1
                 ;;
             *)
                 mkdir -p "$tmp/extract"
-                # Re-download with better name handling: copy already downloaded
                 local named="$tmp/download.bin"
                 mv "$archive" "$named"
                 case "$OPT_BSMANAGER_URL" in
@@ -1813,23 +2121,50 @@ cmd_install_bsmanager() {
         return 0
     fi
 
-    local json meta kind url name
+    local json meta native_ok=0 tag="" url="" name="" flatpak_url="" flatpak_name=""
     json="$(make_temp_file)"
     fetch_latest_bsmanager_release_json "$json"
-    meta="$(py_select_bsmanager_asset "$json" any)"
-    debug "asset meta: $meta"
 
-    if ! printf '%s' "$meta" | python3 -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("ok") else 1)'; then
-        die "Could not find a suitable BSManager release asset"
+    # Prefer native-only selection for the normal path
+    meta="$(py_select_bsmanager_asset "$json" native)"
+    debug "native asset meta: $meta"
+    if printf '%s' "$meta" | python3 -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("ok") else 1)'; then
+        native_ok=1
+        tag="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tag",""))')"
+        url="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin)["url"])')"
+        name="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
+    else
+        # Gather flatpak metadata for messaging / explicit opt-in only
+        meta="$(py_select_bsmanager_asset "$json" flatpak)"
+        if printf '%s' "$meta" | python3 -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("ok") else 1)'; then
+            tag="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tag",""))')"
+            flatpak_url="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("url",""))')"
+            flatpak_name="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("name",""))')"
+        else
+            # Try to read tag from release json even without assets
+            tag="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1],encoding="utf-8")).get("tag_name",""))' "$json" 2>/dev/null || true)"
+        fi
     fi
 
-    kind="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin)["kind"])')"
-    url="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin)["url"])')"
-    name="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
-    local tag
-    tag="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tag",""))')"
-
-    if [[ "$kind" == "native" ]]; then
+    if [[ "$native_ok" -eq 1 ]]; then
+        # Do not side-install native over an existing Flatpak-only setup without confirmation
+        local itype
+        itype="$(detect_bsmanager_installation_type)"
+        if [[ "$itype" == "flatpak-user" || "$itype" == "flatpak-system" || "$itype" == "unknown" ]]; then
+            if is_bsmanager_flatpak_user_installed || is_bsmanager_flatpak_system_installed; then
+                if ! is_bsmanager_native_installed; then
+                    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 && "$FLAG_YES" -ne 1 ]]; then
+                        die "Flatpak BSManager present. Confirm native side-install with --yes, or manage Flatpak with --allow-flatpak."
+                    fi
+                    if [[ "$FLAG_NON_INTERACTIVE" -eq 0 ]]; then
+                        warn "$(t bsm_dup_warn)"
+                        if ! prompt_confirm "Install native BSManager alongside existing Flatpak?"; then
+                            return 1
+                        fi
+                    fi
+                fi
+            fi
+        fi
         info "Downloading native BSManager $tag ($name)"
         local tmp archive
         tmp="$(make_temp_dir)"
@@ -1841,17 +2176,7 @@ cmd_install_bsmanager() {
         return 0
     fi
 
-    # Flatpak-only release
-    warn "Only Flatpak ARM64 package found for BSManager $tag: $name"
-    warn "Native install is preferred on Steam Frame to avoid sandbox integration issues."
-    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 ]]; then
-        die "No native ARM64 asset available. Provide --bsmanager-url/--bsmanager-dir or run interactively to opt into Flatpak."
-    fi
-    if prompt_confirm "$(t ask_flatpak "$name")"; then
-        install_bsmanager_flatpak_bundle "$url" "$name"
-    else
-        die "BSManager installation skipped"
-    fi
+    handle_no_native_upstream_asset "$tag" "$flatpak_name" "$flatpak_url"
 }
 
 # =============================================================================
@@ -1872,45 +2197,75 @@ find_bsmanager_config() {
 }
 
 configure_bsmanager_proton() {
-    local proton_path experimental_path config_path
+    local proton_path experimental_path config_path support write_prefix=0
     proton_path="$(resolve_app_install_path "$PROTON_STABLE_APPID" 2>/dev/null || true)"
     experimental_path="$(resolve_app_install_path "$PROTON_EXPERIMENTAL_APPID" 2>/dev/null || true)"
 
-    if [[ -z "$proton_path" || -z "$experimental_path" ]]; then
-        warn "Proton paths not fully available; skipping automatic config write"
+    if [[ -z "$proton_path" ]]; then
+        warn "Main Proton path not available; skipping automatic config write"
         show_manual_proton_instructions "$proton_path" "$experimental_path"
+        return 1
+    fi
+
+    if is_bsmanager_running; then
+        error "$(t bsm_running_config)"
+        log_action FAIL "config_aborted bsmanager_running"
         return 1
     fi
 
     if ! config_path="$(find_bsmanager_config)"; then
         warn "BSManager config.json not found yet (electron-store under ~/.config/bs-manager)."
-        warn "Launch BSManager once, then re-run: bsmanager-frame proton"
+        info "$(t bsm_launch_once)"
         show_manual_proton_instructions "$proton_path" "$experimental_path"
         return 1
     fi
 
+    support="$(bsmanager_supports_prefix_proton)"
+    case "$support" in
+        supported)
+            if [[ -n "$experimental_path" ]]; then
+                write_prefix=1
+            else
+                warn "Modding Proton path missing; configuring main Proton only"
+            fi
+            ;;
+        unsupported)
+            info "$(t bsm_prefix_unsupported)"
+            ;;
+        *)
+            info "$(t bsm_prefix_unknown)"
+            show_manual_proton_instructions "$proton_path" "$experimental_path"
+            ;;
+    esac
+
     info "Updating BSManager config: $config_path"
-    local backup_dir stamp
+    local backup_dir stamp result
     stamp="$(date +%Y%m%dT%H%M%S)"
     backup_dir="$TOOL_DATA_DIR/backups/config/$stamp"
     if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
         info "[dry-run] set proton-folder=$proton_path"
-        info "[dry-run] set prefix-proton-folder=$experimental_path"
+        if [[ "$write_prefix" -eq 1 ]]; then
+            info "[dry-run] set prefix-proton-folder=$experimental_path"
+        else
+            info "[dry-run] skip prefix-proton-folder (support=$support)"
+        fi
         return 0
     fi
     mkdir -p "$backup_dir"
     cp -a "$config_path" "$backup_dir/"
 
-    local result
-    result="$(py_update_bsmanager_config "$config_path" "$proton_path" "$experimental_path" || true)"
+    if [[ "$write_prefix" -eq 1 ]]; then
+        result="$(py_update_bsmanager_config "$config_path" "$proton_path" "$experimental_path" || true)"
+    else
+        # Pass empty prefix so Python only updates proton-folder
+        result="$(py_update_bsmanager_config "$config_path" "$proton_path" "" || true)"
+    fi
     case "$result" in
-        UPDATED)
+        UPDATED|UNCHANGED)
             success "Main Proton configured"
-            success "Modding Proton configured (prefix-proton-folder; used when upstream supports PR #1136)"
-            ;;
-        UNCHANGED)
-            success "Main Proton configured"
-            success "Modding Proton configured"
+            if [[ "$write_prefix" -eq 1 ]]; then
+                success "Modding Proton configured (prefix-proton-folder)"
+            fi
             ;;
         *)
             warn "Could not update config automatically ($result)"
@@ -2495,18 +2850,38 @@ cmd_diagnose() {
     fi
 
     echo "---- BSManager ----"
-    report_line "Installation type" "$(bsmanager_install_type)"
-    report_line "BSManager binary" "$([[ -e $BSMANAGER_BIN ]] && readlink -f "$BSMANAGER_BIN" 2>/dev/null || echo "$BSMANAGER_BIN (missing)")"
+    local itype support cfg
+    itype="$(detect_bsmanager_installation_type)"
+    report_line "BSManager installation mode" "$itype"
+    report_line "BSManager native" "$(is_bsmanager_native_installed && echo installed || echo "not installed")"
     if [[ -e "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
-        report_line "BSManager binary architecture" "$(file_arch_of "$BSMANAGER_INSTALL_DIR/bs-manager")"
+        report_line "Native executable" "$BSMANAGER_INSTALL_DIR/bs-manager"
+        report_line "Native architecture" "$(file_arch_of "$BSMANAGER_INSTALL_DIR/bs-manager")"
+    else
+        report_line "Native executable" "not installed"
     fi
+    report_line "Flatpak user" "$(is_bsmanager_flatpak_user_installed && echo installed || echo "not installed")"
+    report_line "Flatpak system" "$(is_bsmanager_flatpak_system_installed && echo installed || echo "not installed")"
+    if [[ "$itype" == "native+flatpak" ]] || { is_bsmanager_flatpak_user_installed && is_bsmanager_flatpak_system_installed; }; then
+        echo "WARNING: multiple BSManager installations detected"
+        warn_bsmanager_duplicate_installations || true
+    fi
+    report_line "BSManager command link" "$([[ -e $BSMANAGER_BIN ]] && readlink -f "$BSMANAGER_BIN" 2>/dev/null || echo "$BSMANAGER_BIN (missing)")"
+    report_line "BSManager running" "$(is_bsmanager_running && echo yes || echo no)"
+    support="$(bsmanager_supports_prefix_proton)"
+    report_line "Separate modding Proton support" "$support"
     report_line "BSManager data directory" "$BSMANAGER_DATA_DIR ($([[ -d $BSMANAGER_DATA_DIR ]] && echo present || echo missing))"
     report_line "BSManager config directory" "$BSMANAGER_CONFIG_DIR"
-    local cfg
     if cfg="$(find_bsmanager_config 2>/dev/null)"; then
         report_line "BSManager config file" "$cfg"
+        if config_has_prefix_proton_key "$cfg"; then
+            report_line "prefix-proton-folder in config" "yes"
+        else
+            report_line "prefix-proton-folder in config" "no"
+        fi
     else
         report_line "BSManager config file" "not found"
+        report_line "prefix-proton-folder in config" "n/a"
     fi
 
     echo "---- Beat Saber instances ----"
@@ -2805,12 +3180,15 @@ cmd_install() {
     ensure_required_proton_stack >/dev/null
 
     local itype
-    itype="$(bsmanager_install_type)"
+    itype="$(detect_bsmanager_installation_type)"
+    warn_bsmanager_duplicate_installations || true
     if [[ "$itype" == "none" || "$FLAG_FORCE" -eq 1 ]]; then
-        cmd_install_bsmanager
+        if ! cmd_install_bsmanager; then
+            warn "BSManager install incomplete — see messages above (native custom source or --allow-flatpak)"
+        fi
     else
         success "BSManager already present ($itype); use 'update' to refresh"
-        if [[ "$itype" == "native" ]]; then
+        if is_bsmanager_native_installed; then
             mkdir -p "$LOCAL_BIN"
             ln -sfn "$BSMANAGER_INSTALL_DIR/bs-manager" "$BSMANAGER_BIN" 2>/dev/null || true
         fi
@@ -2834,13 +3212,18 @@ cmd_install() {
 cmd_update() {
     assert_platform_or_force
     ensure_user_dirs
+    warn_bsmanager_duplicate_installations || true
     info "Checking latest BSManager release..."
-    cmd_install_bsmanager
-    if [[ -x "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
+    # Preserves install type: native stays native; Flatpak only updates with --allow-flatpak
+    local rc=0
+    cmd_install_bsmanager || rc=$?
+    if is_bsmanager_native_installed; then
         ln -sfn "$BSMANAGER_INSTALL_DIR/bs-manager" "$BSMANAGER_BIN"
         success "BSManager command link repaired"
+        # Preserving native when upstream has no native asset is success (rc may be 0)
     fi
     info "Note: bsmanager-frame itself is not auto-updated; run: bsmanager-frame self-update"
+    return "$rc"
 }
 
 cmd_setup() {
@@ -2929,6 +3312,9 @@ Global options:
   --dry-run            Print actions without mutating
   --verbose            Debug logging to stderr
   --force              Continue on unknown platform / force reinstall
+  --allow-flatpak      Allow explicit Flatpak fallback when no native ARM64
+                       build is available. Disabled by default (not recommended
+                       as the normal Steam Frame path).
   --lang <code>        UI language: en, fr, es, de, sw
   --help               Show help
   --version            Show version
@@ -2943,9 +3329,9 @@ Command options:
                        does NOT delete game data)
 
 Environment:
-  BSMF_LANG, BSMF_PROTON_STABLE_APPID, BSMF_PROTON_EXPERIMENTAL_APPID,
-  BSMF_STEAM_RUNTIME_ARM64_APPID, BSMF_STEAM_INSTALL_TIMEOUT,
-  BSMANAGER_ASSET_URL, GITHUB_TOKEN, NO_COLOR
+  BSMF_LANG, BSMF_ALLOW_FLATPAK, BSMF_PROTON_STABLE_APPID,
+  BSMF_PROTON_EXPERIMENTAL_APPID, BSMF_STEAM_RUNTIME_ARM64_APPID,
+  BSMF_STEAM_INSTALL_TIMEOUT, BSMANAGER_ASSET_URL, GITHUB_TOKEN, NO_COLOR
 
 Logs:
   ${XDG_STATE_HOME:-~/.local/state}/bsmanager-frame/bsmanager-frame.log
@@ -2963,6 +3349,7 @@ parse_args() {
             --dry-run) FLAG_DRY_RUN=1; shift ;;
             --verbose|-v) FLAG_VERBOSE=1; shift ;;
             --force) FLAG_FORCE=1; shift ;;
+            --allow-flatpak) FLAG_ALLOW_FLATPAK=1; shift ;;
             --remove-data) FLAG_REMOVE_DATA=1; shift ;;
             --lang)
                 OPT_LANG="${2:-}"

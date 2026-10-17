@@ -22,7 +22,8 @@ Steam Frame, Steam, SteamOS, Beat Saber, and related marks belong to their respe
 - Locate Steam libraries
 - Detect required Proton / Steam Linux Runtime installations
 - Request missing tools through Steam (`steam://install/<appid>`)
-- Install / update BSManager (native ARM64 preferred, Flatpak fallback opt-in)
+- Install / update native ARM64 BSManager builds
+- Optional Flatpak fallback available only with explicit opt-in (`--allow-flatpak`)
 - Configure Proton paths when BSManager config format is verified
 - Create launch wrappers for modded Beat Saber instances
 - Create / repair desktop shortcuts
@@ -87,6 +88,27 @@ bsmanager-frame --version
 bsmanager-frame --dry-run diagnose
 bsmanager-frame --non-interactive --yes install
 bsmanager-frame shortcuts --version 1.40.8
+bsmanager-frame update --allow-flatpak   # advanced Flatpak only
+```
+
+## Native vs Flatpak
+
+**Native ARM64** under `~/.local/opt/bs-manager` is the recommended Steam Frame path.
+
+Flatpak is **not** used automatically:
+
+- Updates never convert `native → Flatpak` or `Flatpak → native`
+- If a native install exists and upstream has no native ARM64 artifact, the native install is **kept unchanged**
+- Flatpak is only available with explicit `--allow-flatpak` (or `BSMF_ALLOW_FLATPAK=1`)
+- Running native **and** Flatpak together may create **duplicate BSManager entries** in the SteamVR application picker
+
+**Current upstream status:** BSManager release **v1.6.0** provides an aarch64 Flatpak bundle, but not an equivalent native ARM64 archive suitable for this project's preferred install path. That may change in future upstream releases — the script always prefers a native ARM64 asset when one exists.
+
+Until upstream publishes a native ARM64 build containing [PR #1136](https://github.com/Zagrios/bs-manager/pull/1136) (separate modding Proton), prefer testing with:
+
+```bash
+bsmanager-frame install --bsmanager-url 'https://example.invalid/bs-manager-linux-arm64.tar.gz'
+bsmanager-frame install --bsmanager-dir /path/to/unpacked/bs-manager
 ```
 
 ## Filesystem layout
