@@ -1313,15 +1313,15 @@ PY
 }
 
 py_natural_sort() {
+    # Must use -c (not a heredoc): callers pipe version names on stdin.
     require_python3
-    python3 - <<'PY'
-import sys, re
+    python3 -c 'import sys, re
 items = [ln.rstrip("\n") for ln in sys.stdin if ln.strip()]
 def key(s):
     return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
 for i in sorted(items, key=key):
     print(i)
-PY
+'
 }
 
 # =============================================================================
@@ -2318,25 +2318,73 @@ show_manual_proton_instructions() {
 # Beat Saber discovery / compatdata / wrappers
 # =============================================================================
 
-list_beat_saber_instances() {
-    local root="$BSMANAGER_DATA_DIR/BSInstances"
-    [[ -d "$root" ]] || return 0
-    local dir
-    find "$root" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | while IFS= read -r dir; do
-        if [[ -f "$dir/Beat Saber.exe" ]]; then
-            basename "$dir"
+beat_saber_instances_root() {
+    local cfg parent custom
+    # Default canonical path
+    printf '%s\n' "$BSMANAGER_DATA_DIR/BSInstances"
+
+    # Optional custom install parent from BSManager electron-store
+    if cfg="$(find_bsmanager_config 2>/dev/null)"; then
+        parent="$(python3 -c '
+import json,sys
+try:
+    data=json.load(open(sys.argv[1],encoding="utf-8"))
+    v=data.get("installation-folder") or ""
+    print(v)
+except Exception:
+    print("")
+' "$cfg" 2>/dev/null || true)"
+        if [[ -n "$parent" ]]; then
+            custom="$parent/BSManager/BSInstances"
+            if [[ -d "$custom" && "$custom" != "$BSMANAGER_DATA_DIR/BSInstances" ]]; then
+                printf '%s\n' "$custom"
+            fi
         fi
-    done | py_natural_sort
+    fi
+}
+
+list_beat_saber_instances() {
+    local root dir name
+    local -a found=()
+    local -A seen=()
+
+    while IFS= read -r root; do
+        [[ -n "$root" && -d "$root" ]] || continue
+        # Avoid pipe+while subshell so found[] is populated in this shell
+        while IFS= read -r -d '' dir; do
+            if [[ -f "$dir/Beat Saber.exe" || -f "$dir/BeatSaber.exe" ]]; then
+                name="$(basename "$dir")"
+                [[ -n "$name" ]] || continue
+                if [[ -z "${seen[$name]:-}" ]]; then
+                    seen["$name"]=1
+                    found+=("$name")
+                fi
+            fi
+        done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    done < <(beat_saber_instances_root)
+
+    if [[ "${#found[@]}" -eq 0 ]]; then
+        return 0
+    fi
+
+    if command -v python3 >/dev/null 2>&1; then
+        printf '%s\n' "${found[@]}" | py_natural_sort || printf '%s\n' "${found[@]}"
+    else
+        printf '%s\n' "${found[@]}" | sort -V 2>/dev/null || printf '%s\n' "${found[@]}"
+    fi
 }
 
 select_beat_saber_version() {
     local -a versions=()
-    local i answer="" count default_num=""
+    local i answer="" count default_num="" root_hint
     mapfile -t versions < <(list_beat_saber_instances | grep -v '^$' || true)
     count="${#versions[@]}"
+    root_hint="$BSMANAGER_DATA_DIR/BSInstances"
 
     if [[ "$count" -eq 0 ]]; then
-        die "$(t bs_version_none_die "$BSMANAGER_DATA_DIR/BSInstances")"
+        error "$(t bs_version_none_die "$root_hint")"
+        debug "Also searched custom installation-folder BSInstances if configured"
+        die "$(t bs_version_none_die "$root_hint")" || return 1
     fi
     if [[ -n "$OPT_BS_VERSION" ]]; then
         local v
@@ -2347,7 +2395,7 @@ select_beat_saber_version() {
                 return 0
             fi
         done
-        die "Beat Saber version not found: $OPT_BS_VERSION"
+        die "Beat Saber version not found: $OPT_BS_VERSION" || return 1
     fi
 
     # Non-interactive: single version auto-select; multiple require --version
@@ -2361,7 +2409,7 @@ select_beat_saber_version() {
         for ((i = 0; i < count; i++)); do
             error "  - ${versions[$i]}"
         done
-        die "Re-run with --version <Beat Saber version>"
+        die "Re-run with --version <Beat Saber version>" || return 1
     fi
 
     # Interactive: always propose detected versions as a numbered list (never type the version string)
@@ -2949,7 +2997,10 @@ cmd_diagnose() {
     fi
 
     echo "---- Beat Saber instances ----"
-    local -a versions=()
+    local -a versions=() roots=()
+    mapfile -t roots < <(beat_saber_instances_root)
+    printf 'Search roots:\n'
+    printf '  %s\n' "${roots[@]}"
     mapfile -t versions < <(list_beat_saber_instances)
     if [[ "${#versions[@]}" -eq 0 ]]; then
         echo "(none)"
