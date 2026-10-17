@@ -784,7 +784,9 @@ prompt_read() {
     local prompt="$1"
     local varname="$2"
     local default="${3:-}"
-    local answer=""
+    # Must not be named like a common caller variable (e.g. answer):
+    # bash `printf -v "$varname"` would write the local and leave the caller empty.
+    local _bsmf_reply=""
 
     if [[ "$FLAG_NON_INTERACTIVE" -eq 1 ]]; then
         if [[ -n "$default" ]]; then
@@ -804,11 +806,15 @@ prompt_read() {
         printf '%s: ' "$prompt" >/dev/tty
     fi
     # shellcheck disable=SC2162
-    IFS= read -r answer </dev/tty || true
-    if [[ -z "$answer" && -n "$default" ]]; then
-        answer="$default"
+    IFS= read -r _bsmf_reply </dev/tty || true
+    # Strip CR (Windows/serial TTYs) and surrounding whitespace
+    _bsmf_reply="${_bsmf_reply//$'\r'/}"
+    _bsmf_reply="${_bsmf_reply#"${_bsmf_reply%%[![:space:]]*}"}"
+    _bsmf_reply="${_bsmf_reply%"${_bsmf_reply##*[![:space:]]}"}"
+    if [[ -z "$_bsmf_reply" && -n "$default" ]]; then
+        _bsmf_reply="$default"
     fi
-    printf -v "$varname" '%s' "$answer"
+    printf -v "$varname" '%s' "$_bsmf_reply"
 }
 
 prompt_confirm() {
