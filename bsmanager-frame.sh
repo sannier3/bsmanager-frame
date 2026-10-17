@@ -296,6 +296,12 @@ _t_en() {
         menu_select) printf '%s' "Select" ;;
         menu_invalid) printf '%s' "Invalid choice" ;;
         menu_needs_tty) printf '%s' "Interactive menu requires /dev/tty. Pass a command or --non-interactive." ;;
+        bs_versions_detected) printf '%s' "Detected Beat Saber versions:" ;;
+        bs_versions_none) printf '%s' "No Beat Saber instances detected under BSInstances" ;;
+        bs_version_prompt) printf '%s' "Select Beat Saber version" ;;
+        bs_version_pick_number) printf '%s' "Enter number" ;;
+        bs_version_using) printf '%s' "Using Beat Saber %s" ;;
+        bs_version_none_die) printf '%s' "No Beat Saber instances found under %s" ;;
         confirm_yn) printf '%s' "%s [y/N]" ;;
         prompt_no_tty) printf '%s' "No /dev/tty available for interactive prompt. Re-run with --non-interactive and required options, or from a terminal." ;;
         prompt_need_value) printf '%s' "Non-interactive mode requires an explicit value for: %s" ;;
@@ -365,6 +371,12 @@ _t_fr() {
         menu_select) printf '%s' "Choix" ;;
         menu_invalid) printf '%s' "Choix invalide" ;;
         menu_needs_tty) printf '%s' "Le menu interactif nécessite /dev/tty. Passez une commande ou --non-interactive." ;;
+        bs_versions_detected) printf '%s' "Versions Beat Saber détectées :" ;;
+        bs_versions_none) printf '%s' "Aucune instance Beat Saber détectée sous BSInstances" ;;
+        bs_version_prompt) printf '%s' "Choisir une version Beat Saber" ;;
+        bs_version_pick_number) printf '%s' "Numéro" ;;
+        bs_version_using) printf '%s' "Version Beat Saber utilisée : %s" ;;
+        bs_version_none_die) printf '%s' "Aucune instance Beat Saber trouvée sous %s" ;;
         confirm_yn) printf '%s' "%s [o/N]" ;;
         prompt_no_tty) printf '%s' "Pas de /dev/tty pour les invites. Relancez avec --non-interactive et les options requises, ou depuis un terminal." ;;
         prompt_need_value) printf '%s' "Le mode non interactif exige une valeur explicite pour : %s" ;;
@@ -434,6 +446,12 @@ _t_es() {
         menu_select) printf '%s' "Seleccionar" ;;
         menu_invalid) printf '%s' "Opción no válida" ;;
         menu_needs_tty) printf '%s' "El menú interactivo requiere /dev/tty. Pase un comando o --non-interactive." ;;
+        bs_versions_detected) printf '%s' "Versiones de Beat Saber detectadas:" ;;
+        bs_versions_none) printf '%s' "No se detectaron instancias de Beat Saber en BSInstances" ;;
+        bs_version_prompt) printf '%s' "Elegir una versión de Beat Saber" ;;
+        bs_version_pick_number) printf '%s' "Número" ;;
+        bs_version_using) printf '%s' "Usando Beat Saber %s" ;;
+        bs_version_none_die) printf '%s' "No hay instancias de Beat Saber en %s" ;;
         confirm_yn) printf '%s' "%s [s/N]" ;;
         prompt_no_tty) printf '%s' "No hay /dev/tty para prompts. Use --non-interactive y las opciones necesarias, o un terminal." ;;
         prompt_need_value) printf '%s' "El modo no interactivo requiere un valor explícito para: %s" ;;
@@ -503,6 +521,12 @@ _t_de() {
         menu_select) printf '%s' "Auswahl" ;;
         menu_invalid) printf '%s' "Ungültige Auswahl" ;;
         menu_needs_tty) printf '%s' "Interaktives Menü benötigt /dev/tty. Befehl oder --non-interactive angeben." ;;
+        bs_versions_detected) printf '%s' "Erkannte Beat-Saber-Versionen:" ;;
+        bs_versions_none) printf '%s' "Keine Beat-Saber-Instanzen unter BSInstances gefunden" ;;
+        bs_version_prompt) printf '%s' "Beat-Saber-Version wählen" ;;
+        bs_version_pick_number) printf '%s' "Nummer" ;;
+        bs_version_using) printf '%s' "Verwende Beat Saber %s" ;;
+        bs_version_none_die) printf '%s' "Keine Beat-Saber-Instanzen unter %s gefunden" ;;
         confirm_yn) printf '%s' "%s [j/N]" ;;
         prompt_no_tty) printf '%s' "Kein /dev/tty für Eingaben. Mit --non-interactive und Optionen oder im Terminal erneut ausführen." ;;
         prompt_need_value) printf '%s' "Nicht-interaktiver Modus benötigt einen expliziten Wert für: %s" ;;
@@ -572,6 +596,12 @@ _t_sw() {
         menu_select) printf '%s' "Chagua" ;;
         menu_invalid) printf '%s' "Chaguo si sahihi" ;;
         menu_needs_tty) printf '%s' "Menyu inahitaji /dev/tty. Tumia amri au --non-interactive." ;;
+        bs_versions_detected) printf '%s' "Matoleo ya Beat Saber yaliyogunduliwa:" ;;
+        bs_versions_none) printf '%s' "Hakuna matukio ya Beat Saber chini ya BSInstances" ;;
+        bs_version_prompt) printf '%s' "Chagua toleo la Beat Saber" ;;
+        bs_version_pick_number) printf '%s' "Nambari" ;;
+        bs_version_using) printf '%s' "Inatumia Beat Saber %s" ;;
+        bs_version_none_die) printf '%s' "Hakuna matukio ya Beat Saber chini ya %s" ;;
         confirm_yn) printf '%s' "%s [d/H]" ;;
         prompt_no_tty) printf '%s' "Hakuna /dev/tty. Tumia --non-interactive na chaguo zinazohitajika, au terminal." ;;
         prompt_need_value) printf '%s' "Hali isiyo ya maingiliano inahitaji thamani wazi kwa: %s" ;;
@@ -2301,25 +2331,59 @@ list_beat_saber_instances() {
 
 select_beat_saber_version() {
     local -a versions=()
-    mapfile -t versions < <(list_beat_saber_instances)
-    if [[ "${#versions[@]}" -eq 0 ]]; then
-        die "No Beat Saber instances found under $BSMANAGER_DATA_DIR/BSInstances"
+    local i answer="" count default_num=""
+    mapfile -t versions < <(list_beat_saber_instances | grep -v '^$' || true)
+    count="${#versions[@]}"
+
+    if [[ "$count" -eq 0 ]]; then
+        die "$(t bs_version_none_die "$BSMANAGER_DATA_DIR/BSInstances")"
     fi
     if [[ -n "$OPT_BS_VERSION" ]]; then
         local v
         for v in "${versions[@]}"; do
             if [[ "$v" == "$OPT_BS_VERSION" ]]; then
+                info "$(t bs_version_using "$v")"
                 printf '%s\n' "$v"
                 return 0
             fi
         done
         die "Beat Saber version not found: $OPT_BS_VERSION"
     fi
-    if [[ "${#versions[@]}" -eq 1 ]]; then
-        printf '%s\n' "${versions[0]}"
-        return 0
+
+    # Non-interactive: single version auto-select; multiple require --version
+    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 ]]; then
+        if [[ "$count" -eq 1 ]]; then
+            info "$(t bs_version_using "${versions[0]}")"
+            printf '%s\n' "${versions[0]}"
+            return 0
+        fi
+        error "$(t bs_version_prompt)"
+        for ((i = 0; i < count; i++)); do
+            error "  - ${versions[$i]}"
+        done
+        die "Re-run with --version <Beat Saber version>"
     fi
-    prompt_choice "Select Beat Saber version" "${versions[@]}"
+
+    # Interactive: always propose detected versions as a numbered list (never type the version string)
+    tty_open || true
+    tty_printf '\n%s\n' "$(t bs_version_prompt)"
+    tty_printf '%s\n' "$(t bs_versions_detected)"
+    for ((i = 0; i < count; i++)); do
+        tty_printf '  %d) Beat Saber %s\n' "$((i + 1))" "${versions[$i]}"
+    done
+    tty_printf '\n'
+    default_num="1"
+    while true; do
+        answer="$(prompt_reply "$(t bs_version_pick_number)" "$default_num")"
+        answer="${answer%%[[:space:]]*}"
+        # Accept only a list index — not a free-typed version string
+        if [[ "$answer" =~ ^[0-9]+$ ]] && ((answer >= 1 && answer <= count)); then
+            info "$(t bs_version_using "${versions[$((answer - 1))]}")"
+            printf '%s\n' "${versions[$((answer - 1))]}"
+            return 0
+        fi
+        tty_printf '%s (%q)\n' "$(t menu_invalid)" "$answer"
+    done
 }
 
 discover_compatdata() {
@@ -3245,14 +3309,33 @@ show_menu() {
         die "$(t menu_needs_tty)"
     fi
     local choice=""
+    local -a bs_versions=()
+    local v n_bs=0
     tty_open || true
     while true; do
+        mapfile -t bs_versions < <(list_beat_saber_instances | grep -v '^$' || true)
+        n_bs="${#bs_versions[@]}"
+
         tty_printf '\n%s\n\n' "$(t menu_banner "$VERSION")"
+        if [[ "$n_bs" -gt 0 ]]; then
+            tty_printf '%s\n' "$(t bs_versions_detected)"
+            for v in "${bs_versions[@]}"; do
+                tty_printf '  - %s\n' "$v"
+            done
+            tty_printf '\n'
+        else
+            tty_printf '%s\n\n' "$(t bs_versions_none)"
+        fi
         tty_printf '1) %s\n' "$(t menu_1)"
         tty_printf '2) %s\n' "$(t menu_2)"
         tty_printf '3) %s\n' "$(t menu_3)"
-        tty_printf '4) %s\n' "$(t menu_4)"
-        tty_printf '5) %s\n' "$(t menu_5)"
+        if [[ "$n_bs" -gt 0 ]]; then
+            tty_printf '4) %s (%s)\n' "$(t menu_4)" "$n_bs"
+            tty_printf '5) %s (%s)\n' "$(t menu_5)" "$n_bs"
+        else
+            tty_printf '4) %s\n' "$(t menu_4)"
+            tty_printf '5) %s\n' "$(t menu_5)"
+        fi
         tty_printf '6) %s\n' "$(t menu_6)"
         tty_printf '7) %s\n' "$(t menu_7)"
         tty_printf '8) %s\n' "$(t menu_8)"
@@ -3282,7 +3365,6 @@ show_menu() {
         esac
     done
 }
-
 usage() {
     cat <<EOF
 BSManager Frame v${VERSION}
