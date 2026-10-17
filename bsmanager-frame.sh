@@ -592,28 +592,30 @@ prompt_language_selection() {
 
     # Temporarily use system language for the picker labels when possible
     UI_LANG="$sys_lang"
+    tty_open || true
 
-    cat >/dev/tty <<EOF
+    tty_printf '\n%s\n%s\n\n' "$(t lang_prompt_title)" "$(t lang_system_detected "$sys_lang")"
+    tty_printf '1) %s (en)%s\n' "$(t lang_opt_en)" "$mark_en"
+    tty_printf '2) %s (fr)%s\n' "$(t lang_opt_fr)" "$mark_fr"
+    tty_printf '3) %s (es)%s\n' "$(t lang_opt_es)" "$mark_es"
+    tty_printf '4) %s (de)%s\n' "$(t lang_opt_de)" "$mark_de"
+    tty_printf '5) %s (sw)%s\n\n' "$(t lang_opt_sw)" "$mark_sw"
 
-$(t lang_prompt_title)
-$(t lang_system_detected "$sys_lang")
-
-1) $(t lang_opt_en) (en)${mark_en}
-2) $(t lang_opt_fr) (fr)${mark_fr}
-3) $(t lang_opt_es) (es)${mark_es}
-4) $(t lang_opt_de) (de)${mark_de}
-5) $(t lang_opt_sw) (sw)${mark_sw}
-
-EOF
     while true; do
-        prompt_read "$(t menu_select)" answer "$default_num"
+        # Capture via stdout — never printf -v into a caller local
+        answer="$(prompt_reply "$(t menu_select)" "$default_num")"
+        # Keep only the first token (guards against accidental trailing junk)
+        answer="${answer%%[[:space:]]*}"
         case "$answer" in
-            1|en|EN) save_language en; return 0 ;;
-            2|fr|FR) save_language fr; return 0 ;;
-            3|es|ES) save_language es; return 0 ;;
-            4|de|DE) save_language de; return 0 ;;
-            5|sw|SW) save_language sw; return 0 ;;
-            *) printf '%s\n' "$(t lang_invalid)" >/dev/tty ;;
+            1|en|EN|En) save_language en; return 0 ;;
+            2|fr|FR|Fr) save_language fr; return 0 ;;
+            3|es|ES|Es) save_language es; return 0 ;;
+            4|de|DE|De) save_language de; return 0 ;;
+            5|sw|SW|Sw) save_language sw; return 0 ;;
+            *)
+                tty_printf '%s (%q)\n' "$(t lang_invalid)" "$answer"
+                log_action WARN "lang_invalid_input=$(printf '%q' "$answer")"
+                ;;
         esac
     done
 }
@@ -775,46 +777,98 @@ safe_rm() {
 # =============================================================================
 # UI / prompts (pipe-safe via /dev/tty)
 # =============================================================================
+#
+# IMPORTANT: when the script is run as `curl | bash`, stdin is the pipe — never
+# read prompts from stdin. Always use /dev/tty.
+# Values are returned on stdout (or via prompt_read → caller var) so we never
+# rely on printf -v into a caller's `local` (fragile across bash builds).
+
+BSMF_TTY_FD=""
 
 have_tty() {
     [[ -r /dev/tty && -w /dev/tty ]]
 }
 
-prompt_read() {
+tty_open() {
+    if [[ -n "${BSMF_TTY_FD:-}" ]]; then
+        return 0
+    fi
+    have_tty || return 1
+    # Open read+write FD to the controlling terminal
+    if exec {BSMF_TTY_FD}<>/dev/tty 2>/dev/null; then
+        return 0
+    fi
+    BSMF_TTY_FD=""
+    return 1
+}
+
+tty_printf() {
+    if [[ -n "${BSMF_TTY_FD:-}" ]]; then
+        # shellcheck disable=SC2059
+        printf "$@" >&"$BSMF_TTY_FD"
+    else
+        # shellcheck disable=SC2059
+        printf "$@" >/dev/tty
+    fi
+}
+
+normalize_reply() {
+    local s="${1:-}"
+    # Strip CR, then trim leading/trailing whitespace
+    s="${s//$'\r'/}"
+    s="${s#"${s%%[![:space:]]*}"}"
+    s="${s%"${s##*[![:space:]]}"}"
+    printf '%s' "$s"
+}
+
+# Prompt on TTY, print the reply to stdout (safe under curl|bash).
+prompt_reply() {
     local prompt="$1"
-    local varname="$2"
-    local default="${3:-}"
-    # Must not be named like a common caller variable (e.g. answer):
-    # bash `printf -v "$varname"` would write the local and leave the caller empty.
+    local default="${2:-}"
     local _bsmf_reply=""
 
     if [[ "$FLAG_NON_INTERACTIVE" -eq 1 ]]; then
         if [[ -n "$default" ]]; then
-            printf -v "$varname" '%s' "$default"
+            printf '%s\n' "$default"
             return 0
         fi
         die "$(t prompt_need_value "$prompt")"
     fi
 
-    if ! have_tty; then
+    if ! tty_open; then
         die "$(t prompt_no_tty)"
     fi
 
     if [[ -n "$default" ]]; then
-        printf '%s [%s]: ' "$prompt" "$default" >/dev/tty
+        tty_printf '%s [%s]: ' "$prompt" "$default"
     else
-        printf '%s: ' "$prompt" >/dev/tty
+        tty_printf '%s: ' "$prompt"
     fi
-    # shellcheck disable=SC2162
-    IFS= read -r _bsmf_reply </dev/tty || true
-    # Strip CR (Windows/serial TTYs) and surrounding whitespace
-    _bsmf_reply="${_bsmf_reply//$'\r'/}"
-    _bsmf_reply="${_bsmf_reply#"${_bsmf_reply%%[![:space:]]*}"}"
-    _bsmf_reply="${_bsmf_reply%"${_bsmf_reply##*[![:space:]]}"}"
+
+    if [[ -n "${BSMF_TTY_FD:-}" ]]; then
+        IFS= read -r -u "$BSMF_TTY_FD" _bsmf_reply || true
+    else
+        IFS= read -r _bsmf_reply </dev/tty || true
+    fi
+
+    _bsmf_reply="$(normalize_reply "$_bsmf_reply")"
     if [[ -z "$_bsmf_reply" && -n "$default" ]]; then
         _bsmf_reply="$default"
     fi
-    printf -v "$varname" '%s' "$_bsmf_reply"
+    printf '%s\n' "$_bsmf_reply"
+}
+
+# Compatibility wrapper: set caller variable by name without printf -v.
+prompt_read() {
+    local prompt="$1"
+    local varname="$2"
+    local default="${3:-}"
+    local _got=""
+    _got="$(prompt_reply "$prompt" "$default")"
+    # nameref assignment into caller scope (bash 4.3+)
+    unset -n _bsmf_out 2>/dev/null || true
+    local -n _bsmf_out="$varname"
+    _bsmf_out="$_got"
 }
 
 prompt_confirm() {
@@ -832,7 +886,7 @@ prompt_confirm() {
         return 1
     fi
 
-    prompt_read "$(t confirm_yn "$prompt")" answer "$default"
+    answer="$(prompt_reply "$(t confirm_yn "$prompt")" "$default")"
     case "${answer,,}" in
         y|yes|o|oui|s|si|sí|j|ja|d|ndiyo) return 0 ;;
         *) return 1 ;;
@@ -861,17 +915,18 @@ prompt_choice() {
         die "Re-run with an explicit option (for example --version / --compatdata)."
     fi
 
-    printf '%s\n' "$prompt" >/dev/tty
+    tty_open || true
+    tty_printf '%s\n' "$prompt"
     for ((i = 0; i < count; i++)); do
-        printf '  %d) %s\n' "$((i + 1))" "${options[$i]}" >/dev/tty
+        tty_printf '  %d) %s\n' "$((i + 1))" "${options[$i]}"
     done
     while true; do
-        prompt_read "Select" answer
+        answer="$(prompt_reply "$(t menu_select)" "")"
         if [[ "$answer" =~ ^[0-9]+$ ]] && ((answer >= 1 && answer <= count)); then
             printf '%s\n' "${options[$((answer - 1))]}"
             return 0
         fi
-        printf 'Invalid selection.\n' >/dev/tty
+        tty_printf '%s\n' "$(t menu_invalid)"
     done
 }
 
@@ -2807,25 +2862,22 @@ show_menu() {
         die "$(t menu_needs_tty)"
     fi
     local choice=""
+    tty_open || true
     while true; do
-        cat >/dev/tty <<EOF
-
-$(t menu_banner "$VERSION")
-
-1) $(t menu_1)
-2) $(t menu_2)
-3) $(t menu_3)
-4) $(t menu_4)
-5) $(t menu_5)
-6) $(t menu_6)
-7) $(t menu_7)
-8) $(t menu_8)
-9) $(t menu_9)
-10) $(t menu_10)
-0) $(t menu_0)
-
-EOF
-        prompt_read "$(t menu_select)" choice
+        tty_printf '\n%s\n\n' "$(t menu_banner "$VERSION")"
+        tty_printf '1) %s\n' "$(t menu_1)"
+        tty_printf '2) %s\n' "$(t menu_2)"
+        tty_printf '3) %s\n' "$(t menu_3)"
+        tty_printf '4) %s\n' "$(t menu_4)"
+        tty_printf '5) %s\n' "$(t menu_5)"
+        tty_printf '6) %s\n' "$(t menu_6)"
+        tty_printf '7) %s\n' "$(t menu_7)"
+        tty_printf '8) %s\n' "$(t menu_8)"
+        tty_printf '9) %s\n' "$(t menu_9)"
+        tty_printf '10) %s\n' "$(t menu_10)"
+        tty_printf '0) %s\n\n' "$(t menu_0)"
+        choice="$(prompt_reply "$(t menu_select)" "")"
+        choice="${choice%%[[:space:]]*}"
         case "$choice" in
             1) run_menu_action install cmd_install ;;
             2) run_menu_action update cmd_update ;;
@@ -2843,7 +2895,7 @@ EOF
                 log_action OK "menu_quit"
                 return 0
                 ;;
-            *) printf '%s\n' "$(t menu_invalid)" >/dev/tty ;;
+            *) tty_printf '%s (%q)\n' "$(t menu_invalid)" "$choice" ;;
         esac
     done
 }
