@@ -35,3 +35,6 @@ jobs:
           # Must complete without waiting for /dev/tty input
           timeout 30s bash bsmanager-frame.sh --non-interactive --force --dry-run diagnose
           timeout 15s bash bsmanager-frame.sh --non-interactive --version
+
+      - name: Steam install monitor and archive tests
+        run: bash tests/steam-install-monitor.sh

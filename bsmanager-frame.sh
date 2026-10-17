@@ -10,10 +10,18 @@
 
 set -Eeuo pipefail
 
-VERSION="0.1.0"
+VERSION="0.2.0"
 GITHUB_OWNER="sannier3"
 GITHUB_REPO="bsmanager-frame"
 UPSTREAM_BSMANAGER_REPO="Zagrios/bs-manager"
+# Unofficial Steam Frame native builds (not the bsmanager-frame helper repo).
+BSMANAGER_FRAME_RELEASE_REPO="${BSMF_BSMANAGER_RELEASE_REPO:-sannier3/bs-manager}"
+BSMANAGER_FRAME_RELEASE_TAG_PREFIX="${BSMF_BSMANAGER_RELEASE_TAG_PREFIX:-steam-frame-}"
+BSMANAGER_FRAME_SOURCE_BRANCH="${BSMF_BSMANAGER_SOURCE_BRANCH:-steam-frame-build}"
+BSMANAGER_FRAME_ARCHIVE="BSManager-SteamFrame-linux-arm64.tar.gz"
+BSMANAGER_FRAME_CHECKSUMS="SHA256SUMS"
+BSMANAGER_FRAME_BUILD_INFO="build-info.json"
+BSMANAGER_PROVENANCE_NAME=".bsmanager-frame-build.json"
 
 USER_AGENT="bsmanager-frame/${VERSION}"
 
@@ -28,6 +36,8 @@ PROTON_EXPERIMENTAL_LABEL="Proton Experimental (ARM64)"
 STEAM_RUNTIME_LABEL="Steam Linux Runtime 4.0 ARM64"
 
 STEAM_INSTALL_TIMEOUT="${BSMF_STEAM_INSTALL_TIMEOUT:-900}"
+# Seconds between Steam manifest polls. Override with BSMF_STEAM_POLL_INTERVAL (1–60).
+STEAM_POLL_INTERVAL="${BSMF_STEAM_POLL_INTERVAL:-2}"
 BACKUP_KEEP_COUNT="${BSMF_BACKUP_KEEP_COUNT:-3}"
 CDP_PORT_CANDIDATES="${BSMF_CDP_PORTS:-8080 8081 9222}"
 FLATPAK_APP_ID_EXPECTED="io.bsmanager.bsmanager"
@@ -77,6 +87,11 @@ UI_LANG="${BSMF_LANG:-}"
 OPT_LANG=""
 ALLOW_CONTINUE_ON_ERROR=0
 ACTION_DEPTH=0
+# Filled by refresh_beat_saber_instances (same shell as the menu — not a pipe).
+BSMF_BS_NAMES=()
+BSMF_BS_PATHS=()
+BSMF_SELECTED_BS_NAME=""
+BSMF_SELECTED_BS_DIR=""
 
 # =============================================================================
 # Logging
@@ -303,12 +318,15 @@ _t_en() {
         bs_version_pick_number) printf '%s' "Enter number" ;;
         bs_version_using) printf '%s' "Using Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "No Beat Saber instances found under %s" ;;
+        launcher_ready) printf '%s' "Launcher ready: %s" ;;
+        launcher_hint_menu5) printf '%s' "Menu 5 also adds the desktop entry and tries to repair the Steam shortcut." ;;
+        compat_missing) printf '%s' "No Proton prefix (compatdata folder with pfx/) under %s" ;;
         confirm_yn) printf '%s' "%s [y/N]" ;;
         prompt_no_tty) printf '%s' "No /dev/tty available for interactive prompt. Re-run with --non-interactive and required options, or from a terminal." ;;
         prompt_need_value) printf '%s' "Non-interactive mode requires an explicit value for: %s" ;;
         err_action_failed) printf '%s' "Action failed: %s (exit %s). Returning to menu." ;;
         err_see_logs) printf '%s' "Details: %s | actions: %s" ;;
-        err_interrupted) printf '%s' "Interrupted — cleaning up temporary files." ;;
+        err_interrupted) printf '%s' "Interrupted. Steam was left running. Temporary helper files cleaned." ;;
         pipe_installing) printf '%s' "Running without TTY — installing bsmanager-frame itself." ;;
         pipe_installed) printf '%s' "Installed. Open a terminal and run: bsmanager-frame" ;;
         ok_steam_frame) printf '%s' "Steam Frame detected" ;;
@@ -327,14 +345,49 @@ _t_en() {
         ask_remove_bsmanager) printf '%s' "Remove native BSManager application (~/.local/opt/bs-manager)?" ;;
         ask_shortcuts_now) printf '%s' "Create/repair launchers and shortcuts now?" ;;
         ask_steam_install) printf '%s' "Request Steam to install %s now?" ;;
-        ask_flatpak) printf '%s' "Install Flatpak fallback (%s)? (advanced, explicit opt-in)" ;;
+        steam_not_installed) printf '%s' "%s is not installed." ;;
+        steam_already) printf '%s' "%s is already installed" ;;
+        steam_requesting) printf '%s' "Requesting installation through Steam..." ;;
+        steam_request_sent) printf '%s' "Installation request sent to Steam." ;;
+        steam_confirm_headset) printf '%s' "Confirm the installation inside the Steam Frame headset. Waiting for Steam to start the installation..." ;;
+        steam_waiting_headset) printf '%s' "Waiting for confirmation in headset... %ss" ;;
+        steam_install_detected) printf '%s' "Steam installation detected." ;;
+        steam_downloading) printf '%s' "Downloading %s: %s / %s (%s%%)" ;;
+        steam_in_progress) printf '%s' "Steam installation in progress..." ;;
+        steam_reports_complete) printf '%s' "Steam reports installation complete." ;;
+        steam_validating) printf '%s' "Validating %s..." ;;
+        steam_timeout) printf '%s' "Steam installation did not complete before timeout. The current system state was left unchanged." ;;
+        steam_files_missing) printf '%s' "Steam reports installed, but required files are missing for %s." ;;
+        steam_ok_file) printf '%s' "%s" ;;
+        steam_left_running) printf '%s' "Steam was left running." ;;
+        bsm_config_seeded) printf '%s' "Created BSManager configuration and set the installed Proton folders: %s" ;;
+        ask_flatpak) printf '%s' "Install experimental Flatpak (%s)? Not validated on Steam Frame (v1.6.0 predates PR #1136)." ;;
         bsm_native_preserved) printf '%s' "Current native ARM64 BSManager installation preserved" ;;
-        bsm_no_native_asset) printf '%s' "Compatible native ARM64 release asset: not available" ;;
-        bsm_latest_release) printf '%s' "Latest upstream BSManager release: %s" ;;
-        bsm_kept_unchanged) printf '%s' "Current native ARM64 installation kept unchanged" ;;
-        bsm_no_native_fresh) printf '%s' "No native ARM64 BSManager release asset is currently available upstream." ;;
+        bsm_no_native_asset) printf '%s' "No valid Steam Frame native BSManager release is currently available." ;;
+        bsm_latest_release) printf '%s' "Latest Steam Frame native build: %s" ;;
+        bsm_kept_unchanged) printf '%s' "Current native BSManager installation kept unchanged." ;;
+        bsm_no_native_fresh) printf '%s' "No valid native Steam Frame BSManager release is currently available." ;;
         bsm_use_custom) printf '%s' "Use a custom native ARM64 build with --bsmanager-url URL or --bsmanager-dir PATH" ;;
-        bsm_flatpak_advanced) printf '%s' "Flatpak is available only as an explicit advanced fallback (--allow-flatpak)." ;;
+        bsm_sf_repo) printf '%s' "Steam Frame release repository: %s" ;;
+        bsm_sf_query_failed) printf '%s' "Could not determine the latest Steam Frame BSManager release (%s)." ;;
+        bsm_sf_uptodate) printf '%s' "BSManager Steam Frame native build is already up to date" ;;
+        bsm_sf_installed) printf '%s' "Installed: release %s, commit %s" ;;
+        bsm_sf_available) printf '%s' "Available: release %s, commit %s" ;;
+        bsm_sf_legacy) printf '%s' "Native ARM64 installation: present. Build provenance: unknown / legacy installation" ;;
+        bsm_sf_update_available) printf '%s' "Update available" ;;
+        bsm_sf_confirm) printf '%s' "Replace the installed BSManager with Steam Frame build %s?" ;;
+        bsm_sf_downloading) printf '%s' "Downloading Steam Frame native BSManager %s" ;;
+        bsm_sf_need_yes) printf '%s' "Re-run with --yes to install this Steam Frame build in non-interactive mode." ;;
+        bsm_sf_bad_build_info) printf '%s' "Steam Frame build-info.json rejected: %s" ;;
+        bsm_sf_bad_checksum) printf '%s' "SHA256 verification failed for %s" ;;
+        bsm_sf_bad_archive) printf '%s' "Steam Frame archive rejected: %s" ;;
+        bsm_sf_source_release) printf '%s' "Source: Steam Frame Release" ;;
+        bsm_sf_source_url) printf '%s' "Source: custom URL" ;;
+        bsm_sf_source_dir) printf '%s' "Source: local directory" ;;
+        diag_sf_heading) printf '%s' "Installed Steam Frame build" ;;
+        diag_sf_latest) printf '%s' "Latest Steam Frame release" ;;
+        diag_sf_unavailable) printf '%s' "unavailable (%s)" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak is experimental and not validated on Steam Frame. Official v1.6.0 Flatpak predates the Steam Frame fixes (including PR #1136) and is not a compatible alternative. Use only with --allow-flatpak." ;;
         bsm_dup_warn) printf '%s' "Native and Flatpak BSManager installations coexist. This may create duplicate BSManager desktop / SteamVR application entries." ;;
         bsm_prefix_unsupported) printf '%s' "Installed BSManager does not support a separate Proton for modding operations. Use a BSManager build containing PR #1136." ;;
         bsm_prefix_unknown) printf '%s' "Could not determine whether this BSManager build supports prefix-proton-folder; not writing that key." ;;
@@ -378,12 +431,15 @@ _t_fr() {
         bs_version_pick_number) printf '%s' "Numéro" ;;
         bs_version_using) printf '%s' "Version Beat Saber utilisée : %s" ;;
         bs_version_none_die) printf '%s' "Aucune instance Beat Saber trouvée sous %s" ;;
+        launcher_ready) printf '%s' "Lanceur prêt : %s" ;;
+        launcher_hint_menu5) printf '%s' "Le menu 5 ajoute aussi l'entrée bureau et tente de réparer le raccourci Steam." ;;
+        compat_missing) printf '%s' "Aucun préfixe Proton (dossier compatdata avec pfx/) sous %s" ;;
         confirm_yn) printf '%s' "%s [o/N]" ;;
         prompt_no_tty) printf '%s' "Pas de /dev/tty pour les invites. Relancez avec --non-interactive et les options requises, ou depuis un terminal." ;;
         prompt_need_value) printf '%s' "Le mode non interactif exige une valeur explicite pour : %s" ;;
         err_action_failed) printf '%s' "Action échouée : %s (code %s). Retour au menu." ;;
         err_see_logs) printf '%s' "Détails : %s | actions : %s" ;;
-        err_interrupted) printf '%s' "Interrompu — nettoyage des fichiers temporaires." ;;
+        err_interrupted) printf '%s' "Interrompu. Steam est resté lancé. Fichiers temporaires de l'assistant nettoyés." ;;
         pipe_installing) printf '%s' "Pas de TTY — installation de bsmanager-frame." ;;
         pipe_installed) printf '%s' "Installé. Ouvrez un terminal et lancez : bsmanager-frame" ;;
         ok_steam_frame) printf '%s' "Steam Frame détecté" ;;
@@ -402,14 +458,49 @@ _t_fr() {
         ask_remove_bsmanager) printf '%s' "Supprimer l'application native BSManager (~/.local/opt/bs-manager) ?" ;;
         ask_shortcuts_now) printf '%s' "Créer/réparer les lanceurs et raccourcis maintenant ?" ;;
         ask_steam_install) printf '%s' "Demander à Steam d'installer %s maintenant ?" ;;
-        ask_flatpak) printf '%s' "Installer le fallback Flatpak (%s) ? (avancé, opt-in explicite)" ;;
+        steam_not_installed) printf '%s' "%s n'est pas installé." ;;
+        steam_already) printf '%s' "%s est déjà installé" ;;
+        steam_requesting) printf '%s' "Demande d'installation envoyée à Steam..." ;;
+        steam_request_sent) printf '%s' "Demande d'installation envoyée à Steam." ;;
+        steam_confirm_headset) printf '%s' "Confirmez l'installation dans le casque Steam Frame. En attente du démarrage de l'installation par Steam..." ;;
+        steam_waiting_headset) printf '%s' "En attente de confirmation dans le casque... %ss" ;;
+        steam_install_detected) printf '%s' "Installation Steam détectée." ;;
+        steam_downloading) printf '%s' "Téléchargement de %s : %s / %s (%s%%)" ;;
+        steam_in_progress) printf '%s' "Installation Steam en cours..." ;;
+        steam_reports_complete) printf '%s' "Steam indique que l'installation est terminée." ;;
+        steam_validating) printf '%s' "Validation de %s..." ;;
+        steam_timeout) printf '%s' "L'installation Steam ne s'est pas terminée avant le délai. L'état actuel du système n'a pas été modifié." ;;
+        steam_files_missing) printf '%s' "Steam indique une installation terminée, mais les fichiers requis manquent pour %s." ;;
+        steam_ok_file) printf '%s' "%s" ;;
+        steam_left_running) printf '%s' "Steam est resté lancé." ;;
+        bsm_config_seeded) printf '%s' "Configuration BSManager créée et dossiers Proton installés renseignés : %s" ;;
+        ask_flatpak) printf '%s' "Installer le Flatpak expérimental (%s) ? Non validé sur Steam Frame (v1.6.0 est antérieur à la PR #1136)." ;;
         bsm_native_preserved) printf '%s' "Installation native ARM64 BSManager actuelle conservée" ;;
-        bsm_no_native_asset) printf '%s' "Artefact natif ARM64 compatible : indisponible" ;;
-        bsm_latest_release) printf '%s' "Dernière release BSManager upstream : %s" ;;
-        bsm_kept_unchanged) printf '%s' "Installation native ARM64 actuelle inchangée" ;;
-        bsm_no_native_fresh) printf '%s' "Aucun artefact BSManager natif ARM64 n'est disponible upstream pour le moment." ;;
+        bsm_no_native_asset) printf '%s' "Aucune release native Steam Frame de BSManager n'est disponible pour le moment." ;;
+        bsm_latest_release) printf '%s' "Dernier build natif Steam Frame : %s" ;;
+        bsm_kept_unchanged) printf '%s' "L'installation native actuelle de BSManager est conservée." ;;
+        bsm_no_native_fresh) printf '%s' "Aucune release native Steam Frame de BSManager n'est disponible pour le moment." ;;
         bsm_use_custom) printf '%s' "Utilisez un build natif ARM64 custom avec --bsmanager-url URL ou --bsmanager-dir PATH" ;;
-        bsm_flatpak_advanced) printf '%s' "Flatpak n'est disponible qu'en fallback avancé explicite (--allow-flatpak)." ;;
+        bsm_sf_repo) printf '%s' "Dépôt des releases Steam Frame : %s" ;;
+        bsm_sf_query_failed) printf '%s' "Impossible de déterminer la dernière release Steam Frame de BSManager (%s)." ;;
+        bsm_sf_uptodate) printf '%s' "Le build natif Steam Frame de BSManager est déjà à jour" ;;
+        bsm_sf_installed) printf '%s' "Installé : release %s, commit %s" ;;
+        bsm_sf_available) printf '%s' "Disponible : release %s, commit %s" ;;
+        bsm_sf_legacy) printf '%s' "Installation ARM64 native : présente. Provenance du build : inconnue / installation antérieure" ;;
+        bsm_sf_update_available) printf '%s' "Mise à jour disponible" ;;
+        bsm_sf_confirm) printf '%s' "Remplacer le BSManager installé par le build Steam Frame %s ?" ;;
+        bsm_sf_downloading) printf '%s' "Téléchargement du BSManager natif Steam Frame %s" ;;
+        bsm_sf_need_yes) printf '%s' "Relancez avec --yes pour installer ce build Steam Frame en mode non interactif." ;;
+        bsm_sf_bad_build_info) printf '%s' "build-info.json Steam Frame refusé : %s" ;;
+        bsm_sf_bad_checksum) printf '%s' "Vérification SHA256 échouée pour %s" ;;
+        bsm_sf_bad_archive) printf '%s' "Archive Steam Frame refusée : %s" ;;
+        bsm_sf_source_release) printf '%s' "Source : release Steam Frame" ;;
+        bsm_sf_source_url) printf '%s' "Source : URL personnalisée" ;;
+        bsm_sf_source_dir) printf '%s' "Source : dossier local" ;;
+        diag_sf_heading) printf '%s' "Build Steam Frame installé" ;;
+        diag_sf_latest) printf '%s' "Dernière release Steam Frame" ;;
+        diag_sf_unavailable) printf '%s' "indisponible (%s)" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak est expérimental et non validé sur Steam Frame. Le Flatpak officiel v1.6.0 est antérieur aux correctifs Steam Frame (notamment la PR #1136) et n'est pas une alternative compatible. À n'utiliser qu'avec --allow-flatpak." ;;
         bsm_dup_warn) printf '%s' "BSManager natif et Flatpak coexistent. Cela peut créer des entrées BSManager en double dans le bureau / SteamVR." ;;
         bsm_prefix_unsupported) printf '%s' "Ce BSManager ne gère pas un Proton séparé pour le modding. Utilisez un build contenant la PR #1136." ;;
         bsm_prefix_unknown) printf '%s' "Impossible de déterminer le support de prefix-proton-folder ; cette clé ne sera pas écrite." ;;
@@ -453,12 +544,15 @@ _t_es() {
         bs_version_pick_number) printf '%s' "Número" ;;
         bs_version_using) printf '%s' "Usando Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "No hay instancias de Beat Saber en %s" ;;
+        launcher_ready) printf '%s' "Lanzador listo: %s" ;;
+        launcher_hint_menu5) printf '%s' "El menú 5 también crea el acceso de escritorio e intenta reparar el acceso de Steam." ;;
+        compat_missing) printf '%s' "No hay prefijo Proton (carpeta compatdata con pfx/) en %s" ;;
         confirm_yn) printf '%s' "%s [s/N]" ;;
         prompt_no_tty) printf '%s' "No hay /dev/tty para prompts. Use --non-interactive y las opciones necesarias, o un terminal." ;;
         prompt_need_value) printf '%s' "El modo no interactivo requiere un valor explícito para: %s" ;;
         err_action_failed) printf '%s' "Acción fallida: %s (código %s). Volviendo al menú." ;;
         err_see_logs) printf '%s' "Detalles: %s | acciones: %s" ;;
-        err_interrupted) printf '%s' "Interrumpido — limpiando archivos temporales." ;;
+        err_interrupted) printf '%s' "Interrumpido. Steam sigue en ejecución. Archivos temporales del asistente limpiados." ;;
         pipe_installing) printf '%s' "Sin TTY — instalando bsmanager-frame." ;;
         pipe_installed) printf '%s' "Instalado. Abra un terminal y ejecute: bsmanager-frame" ;;
         ok_steam_frame) printf '%s' "Steam Frame detectado" ;;
@@ -477,14 +571,49 @@ _t_es() {
         ask_remove_bsmanager) printf '%s' "¿Eliminar la aplicación nativa BSManager (~/.local/opt/bs-manager)?" ;;
         ask_shortcuts_now) printf '%s' "¿Crear/reparar lanzadores y accesos directos ahora?" ;;
         ask_steam_install) printf '%s' "¿Pedir a Steam que instale %s ahora?" ;;
-        ask_flatpak) printf '%s' "¿Instalar el fallback Flatpak (%s)? (avanzado, opt-in explícito)" ;;
+        steam_not_installed) printf '%s' "%s no está instalado." ;;
+        steam_already) printf '%s' "%s ya está instalado" ;;
+        steam_requesting) printf '%s' "Solicitando la instalación a través de Steam..." ;;
+        steam_request_sent) printf '%s' "Solicitud de instalación enviada a Steam." ;;
+        steam_confirm_headset) printf '%s' "Confirme la instalación dentro del visor Steam Frame. Esperando a que Steam inicie la instalación..." ;;
+        steam_waiting_headset) printf '%s' "Esperando confirmación en el visor... %ss" ;;
+        steam_install_detected) printf '%s' "Instalación de Steam detectada." ;;
+        steam_downloading) printf '%s' "Descargando %s: %s / %s (%s%%)" ;;
+        steam_in_progress) printf '%s' "Instalación de Steam en curso..." ;;
+        steam_reports_complete) printf '%s' "Steam indica que la instalación ha terminado." ;;
+        steam_validating) printf '%s' "Validando %s..." ;;
+        steam_timeout) printf '%s' "La instalación de Steam no terminó antes del tiempo límite. El estado actual del sistema no se modificó." ;;
+        steam_files_missing) printf '%s' "Steam indica que está instalado, pero faltan los archivos requeridos de %s." ;;
+        steam_ok_file) printf '%s' "%s" ;;
+        steam_left_running) printf '%s' "Steam sigue en ejecución." ;;
+        bsm_config_seeded) printf '%s' "Configuración de BSManager creada y carpetas Proton instaladas escritas: %s" ;;
+        ask_flatpak) printf '%s' "¿Instalar el Flatpak experimental (%s)? No validado en Steam Frame (v1.6.0 es anterior a la PR #1136)." ;;
         bsm_native_preserved) printf '%s' "Instalación nativa ARM64 de BSManager conservada" ;;
-        bsm_no_native_asset) printf '%s' "Artefacto nativo ARM64 compatible: no disponible" ;;
-        bsm_latest_release) printf '%s' "Última versión upstream de BSManager: %s" ;;
-        bsm_kept_unchanged) printf '%s' "Instalación nativa ARM64 actual sin cambios" ;;
-        bsm_no_native_fresh) printf '%s' "No hay artefacto nativo ARM64 de BSManager disponible upstream por ahora." ;;
+        bsm_no_native_asset) printf '%s' "No hay una release nativa de BSManager para Steam Frame disponible ahora." ;;
+        bsm_latest_release) printf '%s' "Último build nativo de Steam Frame: %s" ;;
+        bsm_kept_unchanged) printf '%s' "La instalación nativa actual de BSManager se mantiene sin cambios." ;;
+        bsm_no_native_fresh) printf '%s' "No hay una release nativa de BSManager para Steam Frame disponible ahora." ;;
         bsm_use_custom) printf '%s' "Use un build nativo ARM64 personalizado con --bsmanager-url URL o --bsmanager-dir PATH" ;;
-        bsm_flatpak_advanced) printf '%s' "Flatpak solo está disponible como fallback avanzado explícito (--allow-flatpak)." ;;
+        bsm_sf_repo) printf '%s' "Repositorio de releases Steam Frame: %s" ;;
+        bsm_sf_query_failed) printf '%s' "No se pudo determinar la última release Steam Frame de BSManager (%s)." ;;
+        bsm_sf_uptodate) printf '%s' "El build nativo Steam Frame de BSManager ya está actualizado" ;;
+        bsm_sf_installed) printf '%s' "Instalado: release %s, commit %s" ;;
+        bsm_sf_available) printf '%s' "Disponible: release %s, commit %s" ;;
+        bsm_sf_legacy) printf '%s' "Instalación ARM64 nativa: presente. Procedencia del build: desconocida / instalación anterior" ;;
+        bsm_sf_update_available) printf '%s' "Actualización disponible" ;;
+        bsm_sf_confirm) printf '%s' "¿Reemplazar el BSManager instalado por el build Steam Frame %s?" ;;
+        bsm_sf_downloading) printf '%s' "Descargando BSManager nativo Steam Frame %s" ;;
+        bsm_sf_need_yes) printf '%s' "Vuelva a ejecutar con --yes para instalar este build Steam Frame en modo no interactivo." ;;
+        bsm_sf_bad_build_info) printf '%s' "build-info.json de Steam Frame rechazado: %s" ;;
+        bsm_sf_bad_checksum) printf '%s' "Falló la verificación SHA256 de %s" ;;
+        bsm_sf_bad_archive) printf '%s' "Archivo Steam Frame rechazado: %s" ;;
+        bsm_sf_source_release) printf '%s' "Fuente: release Steam Frame" ;;
+        bsm_sf_source_url) printf '%s' "Fuente: URL personalizada" ;;
+        bsm_sf_source_dir) printf '%s' "Fuente: directorio local" ;;
+        diag_sf_heading) printf '%s' "Build Steam Frame instalado" ;;
+        diag_sf_latest) printf '%s' "Última release Steam Frame" ;;
+        diag_sf_unavailable) printf '%s' "no disponible (%s)" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak es experimental y no está validado en Steam Frame. El Flatpak oficial v1.6.0 es anterior a las correcciones de Steam Frame (incluida la PR #1136) y no es una alternativa compatible. Úselo solo con --allow-flatpak." ;;
         bsm_dup_warn) printf '%s' "Coexisten BSManager nativo y Flatpak. Esto puede crear entradas duplicadas en el escritorio / SteamVR." ;;
         bsm_prefix_unsupported) printf '%s' "Este BSManager no admite un Proton separado para modding. Use un build con la PR #1136." ;;
         bsm_prefix_unknown) printf '%s' "No se pudo determinar el soporte de prefix-proton-folder; no se escribirá esa clave." ;;
@@ -528,12 +657,15 @@ _t_de() {
         bs_version_pick_number) printf '%s' "Nummer" ;;
         bs_version_using) printf '%s' "Verwende Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "Keine Beat-Saber-Instanzen unter %s gefunden" ;;
+        launcher_ready) printf '%s' "Starter bereit: %s" ;;
+        launcher_hint_menu5) printf '%s' "Menü 5 legt auch den Desktop-Eintrag an und versucht die Steam-Verknüpfung zu reparieren." ;;
+        compat_missing) printf '%s' "Kein Proton-Präfix (compatdata-Ordner mit pfx/) unter %s" ;;
         confirm_yn) printf '%s' "%s [j/N]" ;;
         prompt_no_tty) printf '%s' "Kein /dev/tty für Eingaben. Mit --non-interactive und Optionen oder im Terminal erneut ausführen." ;;
         prompt_need_value) printf '%s' "Nicht-interaktiver Modus benötigt einen expliziten Wert für: %s" ;;
         err_action_failed) printf '%s' "Aktion fehlgeschlagen: %s (Code %s). Zurück zum Menü." ;;
         err_see_logs) printf '%s' "Details: %s | Aktionen: %s" ;;
-        err_interrupted) printf '%s' "Abgebrochen — temporäre Dateien werden bereinigt." ;;
+        err_interrupted) printf '%s' "Abgebrochen. Steam läuft weiter. Temporäre Hilfsdateien wurden entfernt." ;;
         pipe_installing) printf '%s' "Kein TTY — installiere bsmanager-frame." ;;
         pipe_installed) printf '%s' "Installiert. Terminal öffnen und ausführen: bsmanager-frame" ;;
         ok_steam_frame) printf '%s' "Steam Frame erkannt" ;;
@@ -552,14 +684,49 @@ _t_de() {
         ask_remove_bsmanager) printf '%s' "Native BSManager-Anwendung entfernen (~/.local/opt/bs-manager)?" ;;
         ask_shortcuts_now) printf '%s' "Starter und Verknüpfungen jetzt erstellen/reparieren?" ;;
         ask_steam_install) printf '%s' "Steam bitten, %s jetzt zu installieren?" ;;
-        ask_flatpak) printf '%s' "Flatpak-Fallback (%s) installieren? (erweitert, explizites Opt-in)" ;;
+        steam_not_installed) printf '%s' "%s ist nicht installiert." ;;
+        steam_already) printf '%s' "%s ist bereits installiert" ;;
+        steam_requesting) printf '%s' "Installation über Steam wird angefordert..." ;;
+        steam_request_sent) printf '%s' "Installationsanfrage an Steam gesendet." ;;
+        steam_confirm_headset) printf '%s' "Bestätigen Sie die Installation im Steam Frame Headset. Warten, bis Steam die Installation startet..." ;;
+        steam_waiting_headset) printf '%s' "Warten auf Bestätigung im Headset... %ss" ;;
+        steam_install_detected) printf '%s' "Steam-Installation erkannt." ;;
+        steam_downloading) printf '%s' "Download von %s: %s / %s (%s%%)" ;;
+        steam_in_progress) printf '%s' "Steam-Installation läuft..." ;;
+        steam_reports_complete) printf '%s' "Steam meldet, dass die Installation abgeschlossen ist." ;;
+        steam_validating) printf '%s' "Validierung von %s..." ;;
+        steam_timeout) printf '%s' "Die Steam-Installation wurde vor dem Zeitlimit nicht abgeschlossen. Der aktuelle Systemzustand blieb unverändert." ;;
+        steam_files_missing) printf '%s' "Steam meldet installiert, aber erforderliche Dateien fehlen für %s." ;;
+        steam_ok_file) printf '%s' "%s" ;;
+        steam_left_running) printf '%s' "Steam läuft weiter." ;;
+        bsm_config_seeded) printf '%s' "BSManager-Konfiguration erstellt und installierte Proton-Ordner eingetragen: %s" ;;
+        ask_flatpak) printf '%s' "Experimentelles Flatpak (%s) installieren? Auf Steam Frame nicht validiert (v1.6.0 liegt vor PR #1136)." ;;
         bsm_native_preserved) printf '%s' "Aktuelle native ARM64-BSManager-Installation beibehalten" ;;
-        bsm_no_native_asset) printf '%s' "Kompatibles natives ARM64-Release-Asset: nicht verfügbar" ;;
-        bsm_latest_release) printf '%s' "Neueste Upstream-BSManager-Version: %s" ;;
-        bsm_kept_unchanged) printf '%s' "Aktuelle native ARM64-Installation unverändert" ;;
-        bsm_no_native_fresh) printf '%s' "Derzeit ist kein natives ARM64-BSManager-Asset upstream verfügbar." ;;
+        bsm_no_native_asset) printf '%s' "Derzeit ist kein gültiges natives Steam-Frame-BSManager-Release verfügbar." ;;
+        bsm_latest_release) printf '%s' "Neuester nativer Steam-Frame-Build: %s" ;;
+        bsm_kept_unchanged) printf '%s' "Die aktuelle native BSManager-Installation bleibt unverändert." ;;
+        bsm_no_native_fresh) printf '%s' "Derzeit ist kein gültiges natives Steam-Frame-BSManager-Release verfügbar." ;;
         bsm_use_custom) printf '%s' "Nutzen Sie einen eigenen nativen ARM64-Build mit --bsmanager-url URL oder --bsmanager-dir PATH" ;;
-        bsm_flatpak_advanced) printf '%s' "Flatpak ist nur als expliziter erweiterter Fallback verfügbar (--allow-flatpak)." ;;
+        bsm_sf_repo) printf '%s' "Steam-Frame-Release-Repository: %s" ;;
+        bsm_sf_query_failed) printf '%s' "Das neueste Steam-Frame-BSManager-Release konnte nicht ermittelt werden (%s)." ;;
+        bsm_sf_uptodate) printf '%s' "Der native Steam-Frame-Build von BSManager ist bereits aktuell" ;;
+        bsm_sf_installed) printf '%s' "Installiert: Release %s, Commit %s" ;;
+        bsm_sf_available) printf '%s' "Verfügbar: Release %s, Commit %s" ;;
+        bsm_sf_legacy) printf '%s' "Native ARM64-Installation: vorhanden. Build-Herkunft: unbekannt / ältere Installation" ;;
+        bsm_sf_update_available) printf '%s' "Update verfügbar" ;;
+        bsm_sf_confirm) printf '%s' "Installiertes BSManager durch Steam-Frame-Build %s ersetzen?" ;;
+        bsm_sf_downloading) printf '%s' "Natives Steam-Frame-BSManager wird heruntergeladen: %s" ;;
+        bsm_sf_need_yes) printf '%s' "Mit --yes erneut ausführen, um diesen Steam-Frame-Build nicht-interaktiv zu installieren." ;;
+        bsm_sf_bad_build_info) printf '%s' "Steam-Frame-build-info.json abgelehnt: %s" ;;
+        bsm_sf_bad_checksum) printf '%s' "SHA256-Prüfung fehlgeschlagen für %s" ;;
+        bsm_sf_bad_archive) printf '%s' "Steam-Frame-Archiv abgelehnt: %s" ;;
+        bsm_sf_source_release) printf '%s' "Quelle: Steam-Frame-Release" ;;
+        bsm_sf_source_url) printf '%s' "Quelle: eigene URL" ;;
+        bsm_sf_source_dir) printf '%s' "Quelle: lokales Verzeichnis" ;;
+        diag_sf_heading) printf '%s' "Installierter Steam-Frame-Build" ;;
+        diag_sf_latest) printf '%s' "Neuestes Steam-Frame-Release" ;;
+        diag_sf_unavailable) printf '%s' "nicht verfügbar (%s)" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak ist experimentell und auf Steam Frame nicht validiert. Das offizielle Flatpak v1.6.0 liegt vor den Steam-Frame-Korrekturen (einschließlich PR #1136) und ist keine kompatible Alternative. Nur mit --allow-flatpak verwenden." ;;
         bsm_dup_warn) printf '%s' "Native und Flatpak-BSManager-Installationen koexistieren. Das kann doppelte BSManager-Einträge in Desktop/SteamVR erzeugen." ;;
         bsm_prefix_unsupported) printf '%s' "Diese BSManager-Version unterstützt kein separates Modding-Proton. Nutzen Sie einen Build mit PR #1136." ;;
         bsm_prefix_unknown) printf '%s' "Unterstützung für prefix-proton-folder nicht ermittelbar; Schlüssel wird nicht geschrieben." ;;
@@ -603,12 +770,15 @@ _t_sw() {
         bs_version_pick_number) printf '%s' "Nambari" ;;
         bs_version_using) printf '%s' "Inatumia Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "Hakuna matukio ya Beat Saber chini ya %s" ;;
+        launcher_ready) printf '%s' "Kizinduzi kiko tayari: %s" ;;
+        launcher_hint_menu5) printf '%s' "Menyu 5 pia huongeza ingizo la desktop na kujaribu kurekebisha njia ya mkato ya Steam." ;;
+        compat_missing) printf '%s' "Hakuna kiambishi awali cha Proton (folda compatdata yenye pfx/) chini ya %s" ;;
         confirm_yn) printf '%s' "%s [d/H]" ;;
         prompt_no_tty) printf '%s' "Hakuna /dev/tty. Tumia --non-interactive na chaguo zinazohitajika, au terminal." ;;
         prompt_need_value) printf '%s' "Hali isiyo ya maingiliano inahitaji thamani wazi kwa: %s" ;;
         err_action_failed) printf '%s' "Kitendo kimeshindwa: %s (kodi %s). Kurudi kwenye menyu." ;;
         err_see_logs) printf '%s' "Maelezo: %s | vitendo: %s" ;;
-        err_interrupted) printf '%s' "Imekatizwa — kusafisha faili za muda." ;;
+        err_interrupted) printf '%s' "Imekatizwa. Steam imeendelea kufanya kazi. Faili za muda za msaidizi zimesafishwa." ;;
         pipe_installing) printf '%s' "Hakuna TTY — inasakinisha bsmanager-frame." ;;
         pipe_installed) printf '%s' "Imesakinishwa. Fungua terminal na endesha: bsmanager-frame" ;;
         ok_steam_frame) printf '%s' "Steam Frame imegunduliwa" ;;
@@ -627,14 +797,49 @@ _t_sw() {
         ask_remove_bsmanager) printf '%s' "Ondoa programu asilia ya BSManager (~/.local/opt/bs-manager)?" ;;
         ask_shortcuts_now) printf '%s' "Unda/rekebisha vizinduzi na njia za mkato sasa?" ;;
         ask_steam_install) printf '%s' "Omba Steam isakinishe %s sasa?" ;;
-        ask_flatpak) printf '%s' "Sakinisha fallback ya Flatpak (%s)? (ya juu, opt-in wazi)" ;;
+        steam_not_installed) printf '%s' "%s haijasakinishwa." ;;
+        steam_already) printf '%s' "%s tayari imesakinishwa" ;;
+        steam_requesting) printf '%s' "Inaomba usakinishaji kupitia Steam..." ;;
+        steam_request_sent) printf '%s' "Ombi la usakinishaji limetumwa kwa Steam." ;;
+        steam_confirm_headset) printf '%s' "Thibitisha usakinishaji ndani ya kifaa cha kichwa cha Steam Frame. Inasubiri Steam ianze usakinishaji..." ;;
+        steam_waiting_headset) printf '%s' "Inasubiri uthibitisho kwenye kifaa cha kichwa... %ss" ;;
+        steam_install_detected) printf '%s' "Usakinishaji wa Steam umegunduliwa." ;;
+        steam_downloading) printf '%s' "Inapakua %s: %s / %s (%s%%)" ;;
+        steam_in_progress) printf '%s' "Usakinishaji wa Steam unaendelea..." ;;
+        steam_reports_complete) printf '%s' "Steam inaripoti kuwa usakinishaji umekamilika." ;;
+        steam_validating) printf '%s' "Inathibitisha %s..." ;;
+        steam_timeout) printf '%s' "Usakinishaji wa Steam haukukamilika kabla ya muda kuisha. Hali ya sasa ya mfumo haikubadilishwa." ;;
+        steam_files_missing) printf '%s' "Steam inaripoti kuwa imesakinishwa, lakini faili zinazohitajika za %s hazipo." ;;
+        steam_ok_file) printf '%s' "%s" ;;
+        steam_left_running) printf '%s' "Steam imeendelea kufanya kazi." ;;
+        bsm_config_seeded) printf '%s' "Usanidi wa BSManager umeundwa na folda za Proton zilizosakinishwa zimeandikwa: %s" ;;
+        ask_flatpak) printf '%s' "Sakinisha Flatpak ya majaribio (%s)? Haijathibitishwa kwenye Steam Frame (v1.6.0 iko kabla ya PR #1136)." ;;
         bsm_native_preserved) printf '%s' "Usakinishaji wa asili wa BSManager ARM64 umehifadhiwa" ;;
-        bsm_no_native_asset) printf '%s' "Faili asilia ya ARM64 inayooana: haipatikani" ;;
-        bsm_latest_release) printf '%s' "Toleo jipya la BSManager upstream: %s" ;;
-        bsm_kept_unchanged) printf '%s' "Usakinishaji wa asili wa ARM64 haujabadilishwa" ;;
-        bsm_no_native_fresh) printf '%s' "Hakuna faili asilia ya BSManager ARM64 inayopatikana upstream kwa sasa." ;;
+        bsm_no_native_asset) printf '%s' "Hakuna toleo halali la asili la BSManager la Steam Frame kwa sasa." ;;
+        bsm_latest_release) printf '%s' "Build mpya ya asili ya Steam Frame: %s" ;;
+        bsm_kept_unchanged) printf '%s' "Usakinishaji wa sasa wa asili wa BSManager umeachwa bila mabadiliko." ;;
+        bsm_no_native_fresh) printf '%s' "Hakuna toleo halali la asili la BSManager la Steam Frame kwa sasa." ;;
         bsm_use_custom) printf '%s' "Tumia build asilia ya ARM64 kwa --bsmanager-url URL au --bsmanager-dir PATH" ;;
-        bsm_flatpak_advanced) printf '%s' "Flatpak inapatikana tu kama fallback ya juu (--allow-flatpak)." ;;
+        bsm_sf_repo) printf '%s' "Hifadhi ya matoleo ya Steam Frame: %s" ;;
+        bsm_sf_query_failed) printf '%s' "Imeshindwa kutambua toleo jipya la BSManager la Steam Frame (%s)." ;;
+        bsm_sf_uptodate) printf '%s' "Build asilia ya Steam Frame ya BSManager tayari iko mpya" ;;
+        bsm_sf_installed) printf '%s' "Iliyosakinishwa: toleo %s, commit %s" ;;
+        bsm_sf_available) printf '%s' "Inayopatikana: toleo %s, commit %s" ;;
+        bsm_sf_legacy) printf '%s' "Usakinishaji asilia wa ARM64: upo. Asili ya build: haijulikani / usakinishaji wa zamani" ;;
+        bsm_sf_update_available) printf '%s' "Sasisho linapatikana" ;;
+        bsm_sf_confirm) printf '%s' "Badilisha BSManager iliyosakinishwa na build ya Steam Frame %s?" ;;
+        bsm_sf_downloading) printf '%s' "Inapakua BSManager asilia ya Steam Frame %s" ;;
+        bsm_sf_need_yes) printf '%s' "Endesha tena na --yes kusakinisha build hii ya Steam Frame bila maingiliano." ;;
+        bsm_sf_bad_build_info) printf '%s' "build-info.json ya Steam Frame imekataliwa: %s" ;;
+        bsm_sf_bad_checksum) printf '%s' "Uthibitishaji wa SHA256 umeshindwa kwa %s" ;;
+        bsm_sf_bad_archive) printf '%s' "Kumbukumbu ya Steam Frame imekataliwa: %s" ;;
+        bsm_sf_source_release) printf '%s' "Chanzo: toleo la Steam Frame" ;;
+        bsm_sf_source_url) printf '%s' "Chanzo: URL maalum" ;;
+        bsm_sf_source_dir) printf '%s' "Chanzo: folda ya ndani" ;;
+        diag_sf_heading) printf '%s' "Build ya Steam Frame iliyosakinishwa" ;;
+        diag_sf_latest) printf '%s' "Toleo jipya la Steam Frame" ;;
+        diag_sf_unavailable) printf '%s' "haipatikani (%s)" ;;
+        bsm_flatpak_advanced) printf '%s' "Flatpak ni ya majaribio na haijathibitishwa kwenye Steam Frame. Flatpak rasmi v1.6.0 iko kabla ya marekebisho ya Steam Frame (pamoja na PR #1136) na si mbadala unaoendana. Tumia tu na --allow-flatpak." ;;
         bsm_dup_warn) printf '%s' "BSManager asilia na Flatpak zipo pamoja. Hii inaweza kuunda maingizo maradufu ya BSManager kwenye desktop / SteamVR." ;;
         bsm_prefix_unsupported) printf '%s' "BSManager hii haiungi mkono Proton tofauti kwa modding. Tumia build yenye PR #1136." ;;
         bsm_prefix_unknown) printf '%s' "Haiwezi kubainisha usaidizi wa prefix-proton-folder; funguo hiyo haitaandikwa." ;;
@@ -1155,110 +1360,6 @@ else:
     fi
 }
 
-py_select_bsmanager_asset() {
-    require_python3
-    python3 - "$@" <<'PY'
-import json, sys, re
-
-path = sys.argv[1]
-prefer = sys.argv[2]  # native|flatpak|any
-with open(path, encoding="utf-8") as f:
-    release = json.load(f)
-
-assets = release.get("assets") or []
-tag = release.get("tag_name") or release.get("name") or ""
-
-native_re = re.compile(r"(arm64|aarch64|linux-arm64|linux-aarch64)", re.I)
-flatpak_re = re.compile(r"\.flatpak$", re.I)
-archive_re = re.compile(r"\.(tar\.gz|tgz|tar\.xz|zip)$", re.I)
-linux_re = re.compile(r"linux", re.I)
-x86_re = re.compile(r"(x86_64|amd64|x64(?!.*arm)|win|windows|darwin|mac)", re.I)
-
-def score_native(name: str) -> int:
-    if not native_re.search(name):
-        return -1
-    if x86_re.search(name) and not native_re.search(name):
-        return -1
-    if not archive_re.search(name):
-        return -1
-    s = 10
-    if linux_re.search(name):
-        s += 5
-    if name.lower().endswith((".tar.gz", ".tgz", ".tar.xz")):
-        s += 2
-    return s
-
-def score_flatpak(name: str) -> int:
-    if not flatpak_re.search(name):
-        return -1
-    if not native_re.search(name):
-        return -1
-    return 10
-
-best = None
-best_score = -1
-kind = None
-for a in assets:
-    name = a.get("name") or ""
-    url = a.get("browser_download_url") or ""
-    if not url:
-        continue
-    if prefer in ("native", "any"):
-        sc = score_native(name)
-        if sc > best_score:
-            best, best_score, kind = a, sc, "native"
-    if prefer in ("flatpak", "any") and (prefer == "flatpak" or best is None or kind != "native"):
-        sc = score_flatpak(name)
-        # Only choose flatpak if no native found when prefer=any
-        pass
-
-# Prefer native over flatpak when prefer=any
-native_best = None
-native_score = -1
-flatpak_best = None
-flatpak_score = -1
-for a in assets:
-    name = a.get("name") or ""
-    url = a.get("browser_download_url") or ""
-    if not url:
-        continue
-    sc = score_native(name)
-    if sc > native_score:
-        native_best, native_score = a, sc
-    sc = score_flatpak(name)
-    if sc > flatpak_score:
-        flatpak_best, flatpak_score = a, sc
-
-chosen = None
-chosen_kind = ""
-if prefer == "native":
-    chosen, chosen_kind = native_best, "native"
-elif prefer == "flatpak":
-    chosen, chosen_kind = flatpak_best, "flatpak"
-else:
-    if native_best is not None:
-        chosen, chosen_kind = native_best, "native"
-    else:
-        chosen, chosen_kind = flatpak_best, "flatpak"
-
-if chosen is None:
-    print(json.dumps({"ok": False, "tag": tag, "error": "no matching asset"}))
-    sys.exit(0)
-
-print(json.dumps({
-    "ok": True,
-    "tag": tag,
-    "kind": chosen_kind,
-    "name": chosen.get("name"),
-    "url": chosen.get("browser_download_url"),
-    "native_available": native_best is not None,
-    "flatpak_available": flatpak_best is not None,
-    "flatpak_name": (flatpak_best or {}).get("name"),
-    "flatpak_url": (flatpak_best or {}).get("browser_download_url"),
-}))
-PY
-}
-
 py_update_bsmanager_config() {
     # Args: config_path proton_folder [prefix_proton_folder]
     require_python3
@@ -1608,109 +1709,370 @@ validate_proton_install() {
     return 0
 }
 
+# Positive integer in [min, max], or the fallback. Returns 1 when the input was invalid.
+steam_bounded_seconds() {
+    local raw="$1"
+    local fallback="$2"
+    local min="$3"
+    local max="$4"
+    if [[ "$raw" =~ ^[0-9]+$ ]] && (( 10#$raw >= min && 10#$raw <= max )); then
+        printf '%s\n' "$((10#$raw))"
+        return 0
+    fi
+    printf '%s\n' "$fallback"
+    return 1
+}
+
+steam_poll_seconds() {
+    steam_bounded_seconds "${BSMF_STEAM_POLL_INTERVAL:-${STEAM_POLL_INTERVAL:-2}}" 2 1 60
+}
+
+steam_timeout_seconds() {
+    steam_bounded_seconds "${BSMF_STEAM_INSTALL_TIMEOUT:-${STEAM_INSTALL_TIMEOUT:-900}}" 900 1 86400
+}
+
+# Human-readable byte size. numfmt is optional.
+steam_format_bytes() {
+    local n="$1"
+    local out=""
+    if [[ ! "$n" =~ ^[0-9]+$ ]]; then
+        printf '%s' "?"
+        return 0
+    fi
+    if command -v numfmt >/dev/null 2>&1; then
+        if out="$(numfmt --to=iec-i --suffix=B --format='%.2f' "$n" 2>/dev/null)"; then
+            printf '%s' "$out"
+            return 0
+        fi
+    fi
+    awk -v n="$n" 'BEGIN {
+        split("B KiB MiB GiB TiB", units, " ")
+        i = 1
+        v = n + 0
+        while (v >= 1024 && i < 5) { v /= 1024; i++ }
+        if (i == 1) printf "%d %s", v, units[i]
+        else printf "%.2f %s", v, units[i]
+    }'
+}
+
+# Fully Installed is bit value 4. Steam may OR it with other flags.
+steam_state_fully_installed() {
+    local state="$1"
+    local downloaded="${2:-}"
+    local total="${3:-}"
+    [[ "$state" =~ ^[0-9]+$ ]] || return 1
+    (( (10#$state & 4) != 0 )) || return 1
+    if [[ "$downloaded" =~ ^[0-9]+$ && "$total" =~ ^[0-9]+$ && "$total" != "0" ]]; then
+        awk -v d="$downloaded" -v t="$total" 'BEGIN { exit !((d + 0) >= (t + 0)) }' || return 1
+    fi
+    return 0
+}
+
+# Read StateFlags, BytesDownloaded, BytesToDownload, installdir.
+# A missing or half-written manifest is not fatal; the caller retries.
+steam_read_manifest_state() {
+    local file="$1"
+    local state="" downloaded="" total="" installdir=""
+    [[ -f "$file" ]] || return 1
+    state="$(acf_get "$file" StateFlags 2>/dev/null || true)"
+    downloaded="$(acf_get "$file" BytesDownloaded 2>/dev/null || true)"
+    total="$(acf_get "$file" BytesToDownload 2>/dev/null || true)"
+    installdir="$(acf_get "$file" installdir 2>/dev/null || true)"
+    printf '%s\t%s\t%s\t%s\n' "$state" "$downloaded" "$total" "$installdir"
+}
+
+steam_manifest_snapshot() {
+    local appid="$1"
+    local manifest="" state="" downloaded=""
+    manifest="$(find_appmanifest "$appid" 2>/dev/null || true)"
+    if [[ -z "$manifest" ]]; then
+        printf 'absent\t\t\n'
+        return 0
+    fi
+    state="$(acf_get "$manifest" StateFlags 2>/dev/null || true)"
+    downloaded="$(acf_get "$manifest" BytesDownloaded 2>/dev/null || true)"
+    printf 'present\t%s\t%s\n' "$state" "$downloaded"
+}
+
+steam_component_files_ok() {
+    local appid="$1"
+    local path="$2"
+    [[ -n "$path" && -d "$path" ]] || return 1
+    case "$appid" in
+        "$PROTON_STABLE_APPID"|"$PROTON_EXPERIMENTAL_APPID")
+            proton_has_binary "$path" || return 1
+            if is_arm64; then
+                proton_has_arm64_wine "$path"
+            else
+                [[ "$(proton_wine_layout_summary "$path")" != "none" ]]
+            fi
+            ;;
+        *)
+            [[ -d "$path" ]]
+            ;;
+    esac
+}
+
+steam_app_is_ready() {
+    local appid="$1"
+    local path="" manifest="" row="" state="" downloaded="" total=""
+    path="$(resolve_app_install_path "$appid" 2>/dev/null || true)"
+    [[ -n "$path" ]] || return 1
+    steam_component_files_ok "$appid" "$path" || return 1
+    manifest="$(find_appmanifest "$appid" 2>/dev/null || true)"
+    [[ -n "$manifest" ]] || return 1
+    row="$(steam_read_manifest_state "$manifest" 2>/dev/null || true)"
+    IFS=$'\t' read -r state downloaded total _ <<<"${row:-}" || true
+    steam_state_fully_installed "$state" "$downloaded" "$total"
+}
+
+steam_report_validated_files() {
+    local appid="$1"
+    local label="$2"
+    local path="$3"
+    case "$appid" in
+        "$PROTON_STABLE_APPID"|"$PROTON_EXPERIMENTAL_APPID")
+            success "$(t steam_ok_file "proton")"
+            if [[ -e "$path/files/bin-arm64/wine" ]]; then
+                success "$(t steam_ok_file "files/bin-arm64/wine")"
+            fi
+            ;;
+        *)
+            success "$(t steam_ok_file "$label")"
+            ;;
+    esac
+    log_action OK "steam_component_validated appid=$appid"
+}
+
+steam_status_line() {
+    local msg="$1"
+    have_tty || return 0
+    printf '\r\033[K%s' "$msg" >/dev/tty
+}
+
+steam_status_finish() {
+    have_tty || return 0
+    printf '\r\033[K' >/dev/tty
+}
+
 request_steam_install() {
     local appid="$1"
     local label="$2"
     local uri="steam://install/${appid}"
 
-    info "Requesting Steam install for $label (AppID $appid)"
+    # Validated on a real Steam Frame: `steam "steam://install/<appid>"` is
+    # forwarded to the headset's already-running Steam client, which shows
+    # the confirmation inside VR. AppID 431960 was only that test application,
+    # not a dependency of this helper.
     if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
-        info "[dry-run] open $uri"
+        info "[DRY-RUN] Would request Steam installation: $label, AppID $appid"
         return 0
     fi
 
+    info "$(t steam_not_installed "$label")"
+    info "$(t steam_requesting)"
+    log_action OK "steam_install_requested appid=$appid uri=$uri"
     if command -v steam >/dev/null 2>&1; then
         steam "$uri" >/dev/null 2>&1 || true
     elif command -v xdg-open >/dev/null 2>&1; then
         xdg-open "$uri" >/dev/null 2>&1 || true
     else
         warn "Neither steam nor xdg-open found. Open this URI manually: $uri"
-        return 0
     fi
-    success "Triggered $uri"
+    info "$(t steam_request_sent)"
+    info "$(t steam_confirm_headset)"
 }
 
-wait_for_app_manifest() {
+# Wait for VR confirmation, download, and real files. Prints the install path.
+# baseline_kind is "absent" or "present" from the snapshot taken before the URI.
+monitor_steam_install() {
     local appid="$1"
     local label="$2"
-    local timeout="${3:-$STEAM_INSTALL_TIMEOUT}"
-    local elapsed=0
-    local step=5
-    local path=""
+    local baseline_kind="${3:-absent}"
+    local baseline_state="${4:-}"
+    local baseline_bytes="${5:-}"
+    local timeout poll elapsed=0
+    local manifest="" row="" state="" downloaded="" total="" installdir=""
+    local path="" pct="" bucket="" msg="" changed=0
+    local announced_manifest=0 announced_download=0 announced_complete=0
+    local last_bucket=-1
 
-    if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
-        info "[dry-run] wait for appmanifest_${appid}.acf"
-        return 0
+    if ! poll="$(steam_poll_seconds)"; then
+        warn "Invalid BSMF_STEAM_POLL_INTERVAL; using ${poll}s"
     fi
+    if ! timeout="$(steam_timeout_seconds)"; then
+        warn "Invalid BSMF_STEAM_INSTALL_TIMEOUT; using ${timeout}s"
+    fi
+    log_action OK "steam_waiting_activity appid=$appid timeout=${timeout}s poll=${poll}s"
 
-    info "Waiting for $label (timeout ${timeout}s)..."
-    while ((elapsed < timeout)); do
-        if path="$(resolve_app_install_path "$appid" 2>/dev/null)"; then
-            success "$label appeared: $path"
-            return 0
+    while (( elapsed < timeout )); do
+        manifest="$(find_appmanifest "$appid" 2>/dev/null || true)"
+        if [[ -z "$manifest" ]]; then
+            steam_status_line "$(t steam_waiting_headset "$elapsed")"
+            sleep "$poll" || true
+            elapsed=$((elapsed + poll))
+            continue
         fi
-        if [[ "$FLAG_NON_INTERACTIVE" -eq 0 ]] && have_tty; then
-            printf '\r  ... %ss elapsed' "$elapsed" >/dev/tty
+
+        row="$(steam_read_manifest_state "$manifest" 2>/dev/null || true)"
+        state="" downloaded="" total="" installdir=""
+        IFS=$'\t' read -r state downloaded total installdir <<<"${row:-}" || true
+        path="$(resolve_app_install_path "$appid" 2>/dev/null || true)"
+
+        changed=0
+        if [[ "$baseline_kind" != "present" ]]; then
+            changed=1
+        elif [[ "$state" != "$baseline_state" || "$downloaded" != "$baseline_bytes" ]]; then
+            changed=1
         fi
-        sleep "$step"
-        elapsed=$((elapsed + step))
+
+        if steam_state_fully_installed "$state" "$downloaded" "$total"; then
+            if [[ "$announced_complete" -eq 0 ]]; then
+                steam_status_finish
+                info "$(t steam_reports_complete)"
+                info "$(t steam_validating "$label")"
+                log_action OK "steam_reports_fully_installed appid=$appid state=${state:-missing}"
+                announced_complete=1
+            fi
+            if [[ -n "$path" ]] && steam_component_files_ok "$appid" "$path"; then
+                steam_status_finish
+                steam_report_validated_files "$appid" "$label" "$path"
+                printf '%s\n' "$path"
+                return 0
+            fi
+        else
+            if [[ "$announced_manifest" -eq 0 && "$changed" -eq 1 ]]; then
+                steam_status_finish
+                info "$(t steam_install_detected)"
+                log_action OK "steam_manifest_activity appid=$appid installdir=${installdir:-unknown}"
+                announced_manifest=1
+            fi
+            if [[ "$downloaded" =~ ^[0-9]+$ && "$total" =~ ^[0-9]+$ && "$total" != "0" ]]; then
+                pct="$(awk -v d="$downloaded" -v t="$total" 'BEGIN { printf "%.1f", (d + 0) * 100 / (t + 0) }')"
+                bucket="${pct%%.*}"
+                bucket=$((10#$bucket / 10))
+                msg="$(t steam_downloading "$label" "$(steam_format_bytes "$downloaded")" "$(steam_format_bytes "$total")" "$pct")"
+                steam_status_line "$msg"
+                if [[ "$announced_download" -eq 0 && "$changed" -eq 1 ]]; then
+                    log_action OK "steam_download_started appid=$appid"
+                    announced_download=1
+                fi
+                if [[ "$changed" -eq 1 && "$bucket" != "$last_bucket" ]]; then
+                    log_action OK "steam_download_progress appid=$appid pct=$pct"
+                    last_bucket="$bucket"
+                    if ! have_tty; then
+                        info "$msg"
+                    fi
+                fi
+            else
+                steam_status_line "$(t steam_in_progress)"
+                if [[ "$announced_download" -eq 0 && "$changed" -eq 1 ]]; then
+                    log_action OK "steam_install_in_progress appid=$appid"
+                    announced_download=1
+                    if ! have_tty; then
+                        info "$(t steam_in_progress)"
+                    fi
+                fi
+            fi
+        fi
+
+        sleep "$poll" || true
+        elapsed=$((elapsed + poll))
     done
-    if [[ "$FLAG_NON_INTERACTIVE" -eq 0 ]] && have_tty; then
-        printf '\n' >/dev/tty
+
+    steam_status_finish
+    if [[ "$announced_complete" -eq 1 ]]; then
+        error "$(t steam_files_missing "$label")"
+        log_action FAIL "steam_validation_failed appid=$appid"
+        if [[ "$appid" == "$PROTON_STABLE_APPID" || "$appid" == "$PROTON_EXPERIMENTAL_APPID" ]]; then
+            if [[ -n "$path" ]]; then
+                validate_proton_install "$path" "$label" || true
+            fi
+        fi
+        return 1
     fi
-    error "Timed out waiting for $label (AppID $appid)"
+    error "$(t steam_timeout)"
+    info "$(t steam_left_running)"
+    log_action FAIL "steam_install_timeout appid=$appid"
     return 1
 }
 
 ensure_steam_app() {
     local appid="$1"
     local label="$2"
-    local path=""
+    local path="" snap="" baseline_kind="" baseline_state="" baseline_bytes=""
 
-    if path="$(resolve_app_install_path "$appid" 2>/dev/null)"; then
-        success "$label: installed ($path)"
+    if steam_app_is_ready "$appid"; then
+        path="$(resolve_app_install_path "$appid")"
+        success "$(t steam_already "$label")"
+        log_action OK "steam_already_installed appid=$appid"
         printf '%s\n' "$path"
         return 0
     fi
 
-    warn "$label: not installed"
-    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 && "$FLAG_YES" -ne 1 ]]; then
-        die "Missing $label (AppID $appid). Install via Steam or re-run interactively / with --yes."
+    if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
+        info "[DRY-RUN] Would request Steam installation: $label, AppID $appid"
+        log_action OK "steam_install_dry_run appid=$appid"
+        return 2
     fi
-    if [[ "$FLAG_NON_INTERACTIVE" -eq 0 ]]; then
+
+    # --yes and --non-interactive authorize this helper to send the URI.
+    # They do not bypass Steam's own headset confirmation or file validation.
+    if [[ "$FLAG_NON_INTERACTIVE" -eq 0 && "$FLAG_YES" -ne 1 ]]; then
         if ! prompt_confirm "$(t ask_steam_install "$label")"; then
             die "Cannot continue without $label"
         fi
     fi
+
     if steam_is_running; then
         debug "Steam appears to be running; will not restart it"
     else
         warn "Steam does not appear to be running; install URI may queue until Steam starts"
     fi
+
+    snap="$(steam_manifest_snapshot "$appid")"
+    IFS=$'\t' read -r baseline_kind baseline_state baseline_bytes <<<"$snap" || true
     request_steam_install "$appid" "$label"
-    wait_for_app_manifest "$appid" "$label" || return 1
-    path="$(resolve_app_install_path "$appid")" || return 1
-    printf '%s\n' "$path"
+    monitor_steam_install "$appid" "$label" "$baseline_kind" "$baseline_state" "$baseline_bytes"
 }
 
 ensure_required_proton_stack() {
-    local runtime_path="" proton_path experimental_path
+    local runtime_path="" proton_path="" experimental_path=""
+    local rc=0
 
-    # 1–2: install/validate Proton titles first (Steam may pull the runtime as a dependency)
-    proton_path="$(ensure_steam_app "$PROTON_STABLE_APPID" "$PROTON_STABLE_LABEL")" || return 1
-    validate_proton_install "$proton_path" "$PROTON_STABLE_LABEL" || return 1
-
-    experimental_path="$(ensure_steam_app "$PROTON_EXPERIMENTAL_APPID" "$PROTON_EXPERIMENTAL_LABEL")" || return 1
-    validate_proton_install "$experimental_path" "$PROTON_EXPERIMENTAL_LABEL" || return 1
-
-    # 3–4: verify runtime afterward; only request install if still missing
-    if runtime_path="$(resolve_app_install_path "$STEAM_RUNTIME_ARM64_APPID" 2>/dev/null)"; then
-        success "$STEAM_RUNTIME_LABEL: installed ($runtime_path)"
+    # One component at a time. After each install, the next check can see a
+    # dependency Steam pulled in (Proton often installs the ARM64 runtime).
+    rc=0
+    proton_path="$(ensure_steam_app "$PROTON_STABLE_APPID" "$PROTON_STABLE_LABEL")" || rc=$?
+    if [[ "$rc" -eq 2 && "$FLAG_DRY_RUN" -eq 1 ]]; then
+        proton_path=""
+    elif [[ "$rc" -ne 0 ]]; then
+        return 1
     else
-        info "$STEAM_RUNTIME_LABEL not found after Proton installs; requesting explicitly"
-        runtime_path="$(ensure_steam_app "$STEAM_RUNTIME_ARM64_APPID" "$STEAM_RUNTIME_LABEL")" || return 1
+        validate_proton_install "$proton_path" "$PROTON_STABLE_LABEL" || return 1
     fi
 
+    rc=0
+    experimental_path="$(ensure_steam_app "$PROTON_EXPERIMENTAL_APPID" "$PROTON_EXPERIMENTAL_LABEL")" || rc=$?
+    if [[ "$rc" -eq 2 && "$FLAG_DRY_RUN" -eq 1 ]]; then
+        experimental_path=""
+    elif [[ "$rc" -ne 0 ]]; then
+        return 1
+    else
+        validate_proton_install "$experimental_path" "$PROTON_EXPERIMENTAL_LABEL" || return 1
+    fi
+
+    rc=0
+    runtime_path="$(ensure_steam_app "$STEAM_RUNTIME_ARM64_APPID" "$STEAM_RUNTIME_LABEL")" || rc=$?
+    if [[ "$rc" -eq 2 && "$FLAG_DRY_RUN" -eq 1 ]]; then
+        runtime_path=""
+    elif [[ "$rc" -ne 0 ]]; then
+        return 1
+    fi
+
+    if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
+        info "[DRY-RUN] Steam install URIs were not sent"
+    fi
     success "Proton stack validated"
     printf '%s\n%s\n%s\n' "$runtime_path" "$proton_path" "$experimental_path"
 }
@@ -1855,11 +2217,10 @@ bsmanager_supports_prefix_proton() {
 
     # Fallback: scan install tree for the token (avoid requiring asar tooling)
     for candidate in "${search_roots[@]}"; do
-        if hit="$(grep -aRl -F -- 'prefix-proton-folder' "$candidate" 2>/dev/null | head -n1)"; then
-            if [[ -n "$hit" ]]; then
-                printf 'supported\n'
-                return 0
-            fi
+        hit="$(grep -aRlm 1 -F -- 'prefix-proton-folder' "$candidate" 2>/dev/null || true)"
+        if [[ -n "$hit" ]]; then
+            printf 'supported\n'
+            return 0
         fi
     done
 
@@ -1909,7 +2270,7 @@ find_bs_manager_binary() {
         printf '%s\n' "$root/bs-manager"
         return 0
     fi
-    candidate="$(find "$root" -type f -name 'bs-manager' 2>/dev/null | head -n1 || true)"
+    candidate="$(find "$root" -type f -name 'bs-manager' -print -quit 2>/dev/null || true)"
     if [[ -n "$candidate" && -f "$candidate" ]]; then
         printf '%s\n' "$candidate"
         return 0
@@ -1955,6 +2316,7 @@ prune_backups() {
 
 install_native_bsmanager_from_dir() {
     local src_root="$1"
+    local provenance_src="${2:-}"
     local bin backup_dir stamp dest_tmp
 
     bin="$(find_bs_manager_binary "$src_root")" || die "bs-manager executable not found in $src_root"
@@ -1987,6 +2349,11 @@ install_native_bsmanager_from_dir() {
     if ! is_arm64_elf "$bin"; then
         die "Post-copy architecture validation failed"
     fi
+    if [[ -n "$provenance_src" ]]; then
+        [[ -f "$provenance_src" ]] || die "Provenance file missing: $provenance_src"
+        [[ -f "$dest_tmp/resources/app.asar" ]] || die "Staged BSManager is missing resources/app.asar"
+        cp -a "$provenance_src" "$dest_tmp/$BSMANAGER_PROVENANCE_NAME"
+    fi
 
     if [[ -d "$BSMANAGER_INSTALL_DIR" ]]; then
         mkdir -p "$(dirname "$backup_dir")"
@@ -2016,12 +2383,497 @@ install_native_bsmanager_from_dir() {
     success "BSManager native ARM64: installed ($BSMANAGER_INSTALL_DIR)"
 }
 
-fetch_latest_bsmanager_release_json() {
+fetch_bsmanager_frame_releases_json() {
     local out="$1"
+    local saved_dry="$FLAG_DRY_RUN"
+    local rc=0
+    # Metadata fetch is read-only; do it even during --dry-run.
+    FLAG_DRY_RUN=0
     download_file \
-        "https://api.github.com/repos/${UPSTREAM_BSMANAGER_REPO}/releases/latest" \
+        "https://api.github.com/repos/${BSMANAGER_FRAME_RELEASE_REPO}/releases?per_page=30" \
         "$out" \
-        "Accept: application/vnd.github+json"
+        "Accept: application/vnd.github+json" || rc=$?
+    FLAG_DRY_RUN="$saved_dry"
+    return "$rc"
+}
+
+download_bsmanager_frame_asset() {
+    local url="$1"
+    local dest="$2"
+    local saved_dry="$FLAG_DRY_RUN"
+    local rc=0
+    FLAG_DRY_RUN=0
+    download_file "$url" "$dest" || rc=$?
+    FLAG_DRY_RUN="$saved_dry"
+    return "$rc"
+}
+
+select_latest_bsmanager_frame_release() {
+    local json_path="$1"
+    require_python3
+    python3 - "$json_path" \
+        "$BSMANAGER_FRAME_RELEASE_TAG_PREFIX" \
+        "$BSMANAGER_FRAME_ARCHIVE" \
+        "$BSMANAGER_FRAME_CHECKSUMS" \
+        "$BSMANAGER_FRAME_BUILD_INFO" <<'PY'
+import json, sys
+
+path, prefix, archive_name, sums_name, info_name = sys.argv[1:6]
+try:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+except Exception as exc:
+    print(json.dumps({"ok": False, "error": "malformed", "detail": str(exc)}))
+    sys.exit(0)
+
+if isinstance(data, dict):
+    print(json.dumps({
+        "ok": False,
+        "error": "api_error",
+        "detail": str(data.get("message") or "unexpected object"),
+    }))
+    sys.exit(0)
+if not isinstance(data, list):
+    print(json.dumps({"ok": False, "error": "malformed", "detail": "releases payload is not a list"}))
+    sys.exit(0)
+
+def asset_url(rel, name):
+    for asset in rel.get("assets") or []:
+        if asset.get("name") == name and asset.get("browser_download_url"):
+            return asset["browser_download_url"]
+    return ""
+
+candidates = []
+for rel in data:
+    if not isinstance(rel, dict) or rel.get("draft"):
+        continue
+    tag = rel.get("tag_name") or ""
+    if not tag.startswith(prefix):
+        continue
+    archive = asset_url(rel, archive_name)
+    checksums = asset_url(rel, sums_name)
+    info = asset_url(rel, info_name)
+    if not (archive and checksums and info):
+        continue
+    candidates.append(rel)
+
+candidates.sort(key=lambda rel: rel.get("published_at") or "", reverse=True)
+if not candidates:
+    print(json.dumps({"ok": False, "error": "no_valid_release"}))
+    sys.exit(0)
+
+rel = candidates[0]
+print(json.dumps({
+    "ok": True,
+    "tag_name": rel.get("tag_name") or "",
+    "release_name": rel.get("name") or "",
+    "published_at": rel.get("published_at") or "",
+    "archive_url": asset_url(rel, archive_name),
+    "checksums_url": asset_url(rel, sums_name),
+    "build_info_url": asset_url(rel, info_name),
+}))
+PY
+}
+
+_bsm_json_field() {
+    local file="$1"
+    local key="$2"
+    python3 -c 'import json,sys
+data=json.load(open(sys.argv[1], encoding="utf-8"))
+val=data.get(sys.argv[2], "")
+if val is None:
+    val=""
+if isinstance(val, bool):
+    print("true" if val else "false")
+else:
+    print(val)
+' "$file" "$key"
+}
+
+validate_bsmanager_frame_build_info() {
+    local path="$1"
+    local reason=""
+    require_python3
+    if ! reason="$(python3 - "$path" \
+        "$BSMANAGER_FRAME_RELEASE_REPO" \
+        "$BSMANAGER_FRAME_SOURCE_BRANCH" \
+        "$BSMANAGER_FRAME_ARCHIVE" <<'PY'
+import json, re, sys
+path, repo, branch, artifact = sys.argv[1:5]
+try:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+except Exception as exc:
+    print("malformed:%s" % exc)
+    sys.exit(1)
+if not isinstance(data, dict):
+    print("not-an-object")
+    sys.exit(1)
+errors = []
+if data.get("source_repository") != repo:
+    errors.append("source_repository")
+if data.get("source_branch") != branch:
+    errors.append("source_branch")
+arch = str(data.get("architecture") or "").lower()
+if arch not in ("aarch64", "arm64"):
+    errors.append("architecture")
+if data.get("artifact") != artifact:
+    errors.append("artifact")
+commit = str(data.get("source_commit") or "")
+if not re.fullmatch(r"[0-9a-fA-F]{7,64}", commit):
+    errors.append("source_commit")
+if "project" in data and data.get("project") != "BSManager":
+    errors.append("project")
+if "distribution" in data and "steam frame" not in str(data.get("distribution") or "").lower():
+    errors.append("distribution")
+if errors:
+    print(",".join(errors))
+    sys.exit(1)
+print(commit)
+PY
+)"; then
+        error "$(t bsm_sf_bad_build_info "${reason:-invalid}")"
+        return 1
+    fi
+    printf '%s\n' "$reason"
+}
+
+validate_bsmanager_frame_checksum() {
+    local archive="$1"
+    local sums="$2"
+    local reason=""
+    require_python3
+    if ! reason="$(python3 - "$BSMANAGER_FRAME_ARCHIVE" "$sums" "$archive" <<'PY'
+import hashlib, sys
+wanted, sums_path, archive = sys.argv[1:4]
+expected = ""
+with open(sums_path, encoding="utf-8", errors="replace") as f:
+    for raw in f:
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        digest, name = parts[0], parts[-1].lstrip("*")
+        base = name.replace("\\", "/").split("/")[-1]
+        if base == wanted:
+            expected = digest.lower()
+            break
+if not expected or len(expected) != 64 or any(c not in "0123456789abcdef" for c in expected):
+    print("missing-or-invalid-entry")
+    sys.exit(1)
+hasher = hashlib.sha256()
+with open(archive, "rb") as f:
+    for chunk in iter(lambda: f.read(1024 * 1024), b""):
+        hasher.update(chunk)
+actual = hasher.hexdigest()
+if actual != expected:
+    print("mismatch")
+    sys.exit(1)
+print("ok")
+PY
+)"; then
+        error "$(t bsm_sf_bad_checksum "$BSMANAGER_FRAME_ARCHIVE")"
+        return 1
+    fi
+    return 0
+}
+
+validate_bsmanager_frame_archive() {
+    local archive="$1"
+    local reason=""
+    require_python3
+    # Names alone miss symlink and hardlink escapes such as
+    # bs-manager/foo -> ../../outside. Link targets must stay under bs-manager/.
+    if ! reason="$(python3 - "$archive" <<'PY'
+import sys, tarfile
+
+archive = sys.argv[1]
+
+def split_rel(path):
+    path = (path or "").replace("\\", "/")
+    if path.startswith("/") or (len(path) > 2 and path[1] == ":"):
+        return None
+    parts = []
+    for part in path.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if not parts:
+                return None
+            parts.pop()
+        else:
+            parts.append(part)
+    return parts
+
+def under_bundle(parts):
+    return bool(parts) and parts[0] == "bs-manager"
+
+def resolve_symlink(member_parts, linkname):
+    linkname = (linkname or "").replace("\\", "/")
+    if not linkname or linkname.startswith("/") or (len(linkname) > 2 and linkname[1] == ":"):
+        return None
+    base = list(member_parts[:-1])
+    for part in linkname.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if not base:
+                return None
+            base.pop()
+        else:
+            base.append(part)
+    return base
+
+try:
+    tf = tarfile.open(archive, "r:*")
+except Exception:
+    print("unreadable")
+    sys.exit(1)
+
+found_exe = False
+with tf:
+    members = tf.getmembers()
+    if not members:
+        print("empty")
+        sys.exit(1)
+    for member in members:
+        parts = split_rel(member.name)
+        if not under_bundle(parts):
+            print("path-escape" if parts is None else "not-rooted")
+            sys.exit(1)
+        if "/".join(parts) == "bs-manager/bs-manager":
+            found_exe = True
+        if member.issym():
+            if not under_bundle(resolve_symlink(parts, member.linkname)):
+                print("link-escape")
+                sys.exit(1)
+        elif member.islnk():
+            if not under_bundle(split_rel(member.linkname or "")):
+                print("link-escape")
+                sys.exit(1)
+
+if not found_exe:
+    print("missing-executable")
+    sys.exit(1)
+print("ok")
+PY
+)"; then
+        error "$(t bsm_sf_bad_archive "${reason:-unsafe}")"
+        return 1
+    fi
+    return 0
+}
+
+write_steam_frame_provenance() {
+    local build_info="$1"
+    local dest="$2"
+    local tag="$3"
+    local published="$4"
+    python3 - "$build_info" "$dest" "$tag" "$published" <<'PY'
+import json, sys
+src, dest, tag, published = sys.argv[1:5]
+with open(src, encoding="utf-8") as f:
+    data = json.load(f)
+data["source_kind"] = "steam-frame-release"
+data["release_tag"] = tag
+data["release_published_at"] = published
+with open(dest, "w", encoding="utf-8") as out:
+    json.dump(data, out, indent=2, ensure_ascii=False)
+    out.write("\n")
+PY
+}
+
+write_custom_bsmanager_source_marker() {
+    local kind="$1"
+    local detail="$2"
+    [[ "$FLAG_DRY_RUN" -eq 1 ]] && return 0
+    [[ -d "$BSMANAGER_INSTALL_DIR" ]] || return 0
+    python3 - "$BSMANAGER_INSTALL_DIR/$BSMANAGER_PROVENANCE_NAME" "$kind" "$detail" <<'PY'
+import json, sys
+path, kind, detail = sys.argv[1:4]
+data = {"source_kind": kind}
+if kind == "custom-url":
+    data["source_url"] = detail
+elif kind == "local-directory":
+    data["source_path"] = detail
+with open(path, "w", encoding="utf-8") as out:
+    json.dump(data, out, indent=2, ensure_ascii=False)
+    out.write("\n")
+PY
+}
+
+installed_steam_frame_commit() {
+    local f="$BSMANAGER_INSTALL_DIR/$BSMANAGER_PROVENANCE_NAME"
+    [[ -f "$f" ]] || return 1
+    python3 -c 'import json,sys
+d=json.load(open(sys.argv[1], encoding="utf-8"))
+if d.get("source_kind") not in (None, "", "steam-frame-release"):
+    sys.exit(1)
+print(d.get("source_commit") or "")
+' "$f" 2>/dev/null
+}
+
+handle_no_steam_frame_release() {
+    if is_bsmanager_native_installed; then
+        info "$(t bsm_no_native_asset)"
+        success "$(t bsm_native_preserved)"
+        info "$(t bsm_kept_unchanged)"
+        return 0
+    fi
+    error "$(t bsm_no_native_fresh)"
+    info "$(t bsm_use_custom)"
+    info "$(t bsm_flatpak_advanced)"
+    return 1
+}
+
+install_bsmanager_from_steam_frame_release() {
+    local json meta rc=0
+    local tag published archive_url sums_url info_url remote_commit installed_commit
+    info "$(t bsm_sf_repo "$BSMANAGER_FRAME_RELEASE_REPO")"
+    json="$(make_temp_file)"
+    if ! fetch_bsmanager_frame_releases_json "$json"; then
+        error "$(t bsm_sf_query_failed "network")"
+        if is_bsmanager_native_installed; then
+            info "$(t bsm_kept_unchanged)"
+            return 0
+        fi
+        return 1
+    fi
+    meta="$(make_temp_file)"
+    if ! select_latest_bsmanager_frame_release "$json" >"$meta"; then
+        error "$(t bsm_sf_query_failed "malformed")"
+        if is_bsmanager_native_installed; then
+            info "$(t bsm_kept_unchanged)"
+            return 0
+        fi
+        return 1
+    fi
+    if [[ "$(_bsm_json_field "$meta" ok)" != "true" ]]; then
+        local err
+        err="$(_bsm_json_field "$meta" error)"
+        if [[ "$err" == "no_valid_release" ]]; then
+            handle_no_steam_frame_release
+            return $?
+        fi
+        error "$(t bsm_sf_query_failed "${err:-unknown}")"
+        if is_bsmanager_native_installed; then
+            info "$(t bsm_kept_unchanged)"
+            return 0
+        fi
+        return 1
+    fi
+
+    tag="$(_bsm_json_field "$meta" tag_name)"
+    published="$(_bsm_json_field "$meta" published_at)"
+    archive_url="$(_bsm_json_field "$meta" archive_url)"
+    sums_url="$(_bsm_json_field "$meta" checksums_url)"
+    info_url="$(_bsm_json_field "$meta" build_info_url)"
+    info "$(t bsm_latest_release "$tag")"
+
+    local work info_path
+    work="$(make_temp_dir)"
+    info_path="$work/$BSMANAGER_FRAME_BUILD_INFO"
+    if ! download_bsmanager_frame_asset "$info_url" "$info_path"; then
+        error "$(t bsm_sf_query_failed "build-info")"
+        if is_bsmanager_native_installed; then
+            info "$(t bsm_kept_unchanged)"
+            return 0
+        fi
+        return 1
+    fi
+    remote_commit="$(validate_bsmanager_frame_build_info "$info_path")" || {
+        if is_bsmanager_native_installed; then
+            info "$(t bsm_kept_unchanged)"
+        fi
+        return 1
+    }
+
+    installed_commit=""
+    if is_bsmanager_native_installed; then
+        installed_commit="$(installed_steam_frame_commit 2>/dev/null || true)"
+        if [[ -n "$installed_commit" && "$installed_commit" == "$remote_commit" && "$FLAG_FORCE" -ne 1 ]]; then
+            local inst_tag
+            inst_tag="$(_bsm_json_field "$BSMANAGER_INSTALL_DIR/$BSMANAGER_PROVENANCE_NAME" release_tag)"
+            [[ -n "$inst_tag" ]] || inst_tag="$tag"
+            success "$(t bsm_sf_uptodate)"
+            info "$(t bsm_sf_installed "$inst_tag" "$installed_commit")"
+            return 0
+        fi
+        if [[ "$FLAG_FORCE" -ne 1 ]]; then
+            if [[ -z "$installed_commit" ]]; then
+                info "$(t bsm_sf_legacy)"
+            else
+                local inst_tag
+                inst_tag="$(_bsm_json_field "$BSMANAGER_INSTALL_DIR/$BSMANAGER_PROVENANCE_NAME" release_tag)"
+                [[ -n "$inst_tag" ]] || inst_tag="?"
+                info "$(t bsm_sf_installed "$inst_tag" "$installed_commit")"
+            fi
+            info "$(t bsm_sf_available "$tag" "$remote_commit")"
+            info "$(t bsm_sf_update_available)"
+            if ! prompt_confirm "$(t bsm_sf_confirm "$tag")"; then
+                if [[ "$FLAG_NON_INTERACTIVE" -eq 1 ]]; then
+                    error "$(t bsm_sf_need_yes)"
+                fi
+                info "$(t bsm_kept_unchanged)"
+                return 1
+            fi
+        fi
+    elif is_bsmanager_flatpak_user_installed || is_bsmanager_flatpak_system_installed; then
+        warn "$(t bsm_dup_warn)"
+        if ! prompt_confirm "Install native BSManager alongside existing Flatpak?"; then
+            return 1
+        fi
+    fi
+
+    if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
+        info "[dry-run] verify ${BSMANAGER_FRAME_CHECKSUMS}, archive layout, ARM64 ELF, then install $tag"
+        return 0
+    fi
+
+    local sums_path archive_path prov_path stage
+    sums_path="$work/$BSMANAGER_FRAME_CHECKSUMS"
+    archive_path="$work/$BSMANAGER_FRAME_ARCHIVE"
+    if ! download_bsmanager_frame_asset "$sums_url" "$sums_path"; then
+        error "$(t bsm_sf_query_failed "SHA256SUMS")"
+        is_bsmanager_native_installed && info "$(t bsm_kept_unchanged)"
+        return 1
+    fi
+    if ! download_bsmanager_frame_asset "$archive_url" "$archive_path"; then
+        error "$(t bsm_sf_query_failed "archive")"
+        is_bsmanager_native_installed && info "$(t bsm_kept_unchanged)"
+        return 1
+    fi
+    validate_bsmanager_frame_checksum "$archive_path" "$sums_path" || {
+        is_bsmanager_native_installed && info "$(t bsm_kept_unchanged)"
+        return 1
+    }
+    validate_bsmanager_frame_archive "$archive_path" || {
+        is_bsmanager_native_installed && info "$(t bsm_kept_unchanged)"
+        return 1
+    }
+    mkdir -p "$work/extract"
+    extract_archive "$archive_path" "$work/extract"
+    stage="$work/extract/bs-manager"
+    if [[ ! -f "$stage/bs-manager" ]]; then
+        die "Extracted archive is missing bs-manager/bs-manager" || return 1
+    fi
+    if [[ ! -d "$stage/resources" ]]; then
+        die "Extracted archive is missing bs-manager/resources" || return 1
+    fi
+    if [[ ! -f "$stage/resources/app.asar" ]]; then
+        die "Extracted archive is missing bs-manager/resources/app.asar" || return 1
+    fi
+    chmod +x "$stage/bs-manager" || true
+    if ! is_arm64_elf "$stage/bs-manager"; then
+        die "Refusing non-ARM64 bs-manager ($(file_arch_of "$stage/bs-manager"))" || return 1
+    fi
+    prov_path="$work/$BSMANAGER_PROVENANCE_NAME"
+    write_steam_frame_provenance "$info_path" "$prov_path" "$tag" "$published"
+    cp -a "$prov_path" "$stage/$BSMANAGER_PROVENANCE_NAME"
+    info "$(t bsm_sf_downloading "$tag")"
+    install_native_bsmanager_from_dir "$work/extract" "$prov_path"
 }
 
 install_bsmanager_flatpak_bundle() {
@@ -2067,46 +2919,6 @@ install_bsmanager_flatpak_bundle() {
     fi
 }
 
-handle_no_native_upstream_asset() {
-    local tag="$1"
-    local flatpak_name="${2:-}"
-    local flatpak_url="${3:-}"
-    local itype
-    itype="$(detect_bsmanager_installation_type)"
-
-    info "$(t bsm_latest_release "${tag:-unknown}")"
-    info "$(t bsm_no_native_asset)"
-
-    if is_bsmanager_native_installed; then
-        success "$(t bsm_native_preserved)"
-        info "$(t bsm_kept_unchanged)"
-        info "Advanced options: --bsmanager-url URL | --bsmanager-dir PATH | --allow-flatpak"
-        return 0
-    fi
-
-    case "$itype" in
-        flatpak-user|flatpak-system|unknown)
-            if [[ "$FLAG_ALLOW_FLATPAK" -eq 1 && -n "$flatpak_url" ]]; then
-                install_bsmanager_flatpak_bundle "$flatpak_url" "${flatpak_name:-bsmanager.flatpak}" || return 1
-                return 0
-            fi
-            info "$(t bsm_flatpak_update_hint)"
-            info "$(t bsm_use_custom)"
-            return 0
-            ;;
-    esac
-
-    # Fresh install, no native asset
-    error "$(t bsm_no_native_fresh)"
-    info "$(t bsm_use_custom)"
-    info "$(t bsm_flatpak_advanced)"
-    if [[ "$FLAG_ALLOW_FLATPAK" -eq 1 && -n "$flatpak_url" ]]; then
-        install_bsmanager_flatpak_bundle "$flatpak_url" "${flatpak_name:-bsmanager.flatpak}" || return 1
-        return 0
-    fi
-    return 1
-}
-
 cmd_install_bsmanager() {
     ensure_user_dirs
     warn_bsmanager_duplicate_installations || true
@@ -2125,6 +2937,8 @@ cmd_install_bsmanager() {
             fi
         fi
         install_native_bsmanager_from_dir "$OPT_BSMANAGER_DIR"
+        write_custom_bsmanager_source_marker "local-directory" "$OPT_BSMANAGER_DIR"
+        info "$(t bsm_sf_source_dir)"
         return 0
     fi
 
@@ -2147,67 +2961,14 @@ cmd_install_bsmanager() {
                     *) mv "$named" "$tmp/a.tar.gz"; extract_archive "$tmp/a.tar.gz" "$tmp/extract" ;;
                 esac
                 install_native_bsmanager_from_dir "$tmp/extract"
+                write_custom_bsmanager_source_marker "custom-url" "$OPT_BSMANAGER_URL"
+                info "$(t bsm_sf_source_url)"
                 ;;
         esac
         return 0
     fi
 
-    local json meta native_ok=0 tag="" url="" name="" flatpak_url="" flatpak_name=""
-    json="$(make_temp_file)"
-    fetch_latest_bsmanager_release_json "$json"
-
-    # Prefer native-only selection for the normal path
-    meta="$(py_select_bsmanager_asset "$json" native)"
-    debug "native asset meta: $meta"
-    if printf '%s' "$meta" | python3 -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("ok") else 1)'; then
-        native_ok=1
-        tag="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tag",""))')"
-        url="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin)["url"])')"
-        name="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')"
-    else
-        # Gather flatpak metadata for messaging / explicit opt-in only
-        meta="$(py_select_bsmanager_asset "$json" flatpak)"
-        if printf '%s' "$meta" | python3 -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("ok") else 1)'; then
-            tag="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tag",""))')"
-            flatpak_url="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("url",""))')"
-            flatpak_name="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("name",""))')"
-        else
-            # Try to read tag from release json even without assets
-            tag="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1],encoding="utf-8")).get("tag_name",""))' "$json" 2>/dev/null || true)"
-        fi
-    fi
-
-    if [[ "$native_ok" -eq 1 ]]; then
-        # Do not side-install native over an existing Flatpak-only setup without confirmation
-        local itype
-        itype="$(detect_bsmanager_installation_type)"
-        if [[ "$itype" == "flatpak-user" || "$itype" == "flatpak-system" || "$itype" == "unknown" ]]; then
-            if is_bsmanager_flatpak_user_installed || is_bsmanager_flatpak_system_installed; then
-                if ! is_bsmanager_native_installed; then
-                    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 && "$FLAG_YES" -ne 1 ]]; then
-                        die "Flatpak BSManager present. Confirm native side-install with --yes, or manage Flatpak with --allow-flatpak."
-                    fi
-                    if [[ "$FLAG_NON_INTERACTIVE" -eq 0 ]]; then
-                        warn "$(t bsm_dup_warn)"
-                        if ! prompt_confirm "Install native BSManager alongside existing Flatpak?"; then
-                            return 1
-                        fi
-                    fi
-                fi
-            fi
-        fi
-        info "Downloading native BSManager $tag ($name)"
-        local tmp archive
-        tmp="$(make_temp_dir)"
-        archive="$tmp/$name"
-        download_file "$url" "$archive"
-        mkdir -p "$tmp/extract"
-        extract_archive "$archive" "$tmp/extract"
-        install_native_bsmanager_from_dir "$tmp/extract"
-        return 0
-    fi
-
-    handle_no_native_upstream_asset "$tag" "$flatpak_name" "$flatpak_url"
+    install_bsmanager_from_steam_frame_release
 }
 
 # =============================================================================
@@ -2244,11 +3005,19 @@ configure_bsmanager_proton() {
         return 1
     fi
 
+    local seeded=0
     if ! config_path="$(find_bsmanager_config)"; then
-        warn "BSManager config.json not found yet (electron-store under ~/.config/bs-manager)."
-        info "$(t bsm_launch_once)"
-        show_manual_proton_instructions "$proton_path" "$experimental_path"
-        return 1
+        # Fresh install: electron-store has not created config.json yet.
+        # Write the Proton folders we just installed instead of asking for a first launch.
+        config_path="$BSMANAGER_CONFIG_DIR/config.json"
+        seeded=1
+        if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
+            info "[dry-run] would create $config_path"
+        else
+            mkdir -p "$BSMANAGER_CONFIG_DIR"
+            printf '%s\n' '{}' >"$config_path"
+            log_action OK "bsmanager_config_created path=$config_path"
+        fi
     fi
 
     support="$(bsmanager_supports_prefix_proton)"
@@ -2264,8 +3033,12 @@ configure_bsmanager_proton() {
             info "$(t bsm_prefix_unsupported)"
             ;;
         *)
-            info "$(t bsm_prefix_unknown)"
-            show_manual_proton_instructions "$proton_path" "$experimental_path"
+            if [[ "$seeded" -eq 1 && -n "$experimental_path" ]]; then
+                write_prefix=1
+            else
+                info "$(t bsm_prefix_unknown)"
+                show_manual_proton_instructions "$proton_path" "$experimental_path"
+            fi
             ;;
     esac
 
@@ -2297,6 +3070,9 @@ configure_bsmanager_proton() {
             if [[ "$write_prefix" -eq 1 ]]; then
                 success "Modding Proton configured (prefix-proton-folder)"
             fi
+            if [[ "$seeded" -eq 1 ]]; then
+                success "$(t bsm_config_seeded "$config_path")"
+            fi
             ;;
         *)
             warn "Could not update config automatically ($result)"
@@ -2320,11 +3096,14 @@ show_manual_proton_instructions() {
 # =============================================================================
 
 beat_saber_instances_root() {
-    local cfg parent custom
-    # Default canonical path
-    printf '%s\n' "$BSMANAGER_DATA_DIR/BSInstances"
+    local cfg parent p
+    local -a roots=()
+    local -A seen=()
 
-    # Optional custom install parent from BSManager electron-store
+    roots+=("$BSMANAGER_DATA_DIR/BSInstances")
+    roots+=("$HOME/BSManager/BSInstances")
+    roots+=("$HOME/Documents/BSManager/BSInstances")
+
     if cfg="$(find_bsmanager_config 2>/dev/null)"; then
         parent="$(python3 -c '
 import json,sys
@@ -2336,112 +3115,195 @@ except Exception:
     print("")
 ' "$cfg" 2>/dev/null || true)"
         if [[ -n "$parent" ]]; then
-            custom="$parent/BSManager/BSInstances"
-            if [[ -d "$custom" && "$custom" != "$BSMANAGER_DATA_DIR/BSInstances" ]]; then
-                printf '%s\n' "$custom"
-            fi
+            roots+=("$parent/BSManager/BSInstances")
+            roots+=("$parent/BSInstances")
         fi
     fi
-}
 
-list_beat_saber_instances() {
-    # mapfile + for: avoid while-read EOF status under `set -e` which can
-    # abort the function before printing matches (empty menu / diagnose).
-    local root dir name
-    local -a found=() roots=() dirs=()
-    local -A seen=()
-
-    mapfile -t roots < <(beat_saber_instances_root) || true
-    for root in "${roots[@]}"; do
-        [[ -n "$root" && -d "$root" ]] || continue
-        dirs=()
-        mapfile -t dirs < <(find "$root" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort) || true
-        for dir in "${dirs[@]}"; do
-            [[ -n "$dir" ]] || continue
-            if [[ -f "$dir/Beat Saber.exe" || -f "$dir/BeatSaber.exe" ]]; then
-                name="$(basename -- "$dir")"
-                [[ -n "$name" ]] || continue
-                if [[ -z "${seen[$name]:-}" ]]; then
-                    seen["$name"]=1
-                    found+=("$name")
-                fi
-            fi
-        done
+    for p in "${roots[@]}"; do
+        [[ -n "$p" ]] || continue
+        [[ -n "${seen[$p]:-}" ]] && continue
+        seen["$p"]=1
+        printf '%s\n' "$p"
     done
-
-    if [[ "${#found[@]}" -eq 0 ]]; then
-        return 0
-    fi
-
-    # Prefer sort -V (no stdin clash). Fall back to py_natural_sort, then plain printf.
-    if printf '%s\n' "${found[@]}" | sort -V 2>/dev/null; then
-        return 0
-    fi
-    if command -v python3 >/dev/null 2>&1; then
-        printf '%s\n' "${found[@]}" | py_natural_sort && return 0
-    fi
-    printf '%s\n' "${found[@]}"
     return 0
 }
 
+# Folder that actually contains the Windows executable.
+beat_saber_exe_dir() {
+    local dir="$1"
+    if [[ -f "$dir/Beat Saber.exe" || -f "$dir/BeatSaber.exe" ]]; then
+        printf '%s\n' "$dir"
+        return 0
+    fi
+    if [[ -f "$dir/Beat Saber/Beat Saber.exe" || -f "$dir/Beat Saber/BeatSaber.exe" ]]; then
+        printf '%s\n' "$dir/Beat Saber"
+        return 0
+    fi
+    return 1
+}
+
+_sort_bs_instances() {
+    local -a packed=("$@")
+    local half=$(( ${#packed[@]} / 2 ))
+    local -a only_names=("${packed[@]:0:half}")
+    local -a only_paths=("${packed[@]:half}")
+    local -a recs=() lines=() next_names=() next_paths=()
+    local i line name path
+    [[ "$half" -gt 0 ]] || return 1
+    for i in "${!only_names[@]}"; do
+        recs+=("${only_names[$i]}"$'\t'"${only_paths[$i]}")
+    done
+    if ! command -v python3 >/dev/null 2>&1; then
+        return 1
+    fi
+    mapfile -t lines < <(python3 -c 'import sys, re
+pairs=[]
+for rec in sys.argv[1:]:
+    name, path = rec.split("\t", 1)
+    pairs.append((name, path))
+def key(p):
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", p[0])]
+for name, path in sorted(pairs, key=key):
+    sys.stdout.write(name + "\t" + path + "\n")
+' "${recs[@]}") || return 1
+    for line in "${lines[@]}"; do
+        [[ -n "$line" ]] || continue
+        name="${line%%$'\t'*}"
+        path="${line#*$'\t'}"
+        [[ -n "$name" && -n "$path" ]] || continue
+        next_names+=("$name")
+        next_paths+=("$path")
+    done
+    [[ "${#next_names[@]}" -eq "$half" ]] || return 1
+    BSMF_BS_NAMES=("${next_names[@]}")
+    BSMF_BS_PATHS=("${next_paths[@]}")
+    return 0
+}
+
+# Fills BSMF_BS_NAMES / BSMF_BS_PATHS in the current shell.
+# Globs only: no pipe, no while-read, so `set -e` cannot drop matches.
+refresh_beat_saber_instances() {
+    local root dir exe_dir name path
+    local -a roots=()
+    local -A seen_path=()
+    local had_nullglob=0
+    BSMF_BS_NAMES=()
+    BSMF_BS_PATHS=()
+
+    mapfile -t roots < <(beat_saber_instances_root) || true
+    shopt -q nullglob && had_nullglob=1
+    shopt -s nullglob
+    for root in "${roots[@]}"; do
+        [[ -n "$root" && -d "$root" ]] || continue
+        for dir in "$root"/*/; do
+            dir="${dir%/}"
+            exe_dir="$(beat_saber_exe_dir "$dir" 2>/dev/null || true)"
+            [[ -n "$exe_dir" && -d "$exe_dir" ]] || continue
+            path="$(canonical_path "$exe_dir")"
+            if [[ -n "${seen_path[$path]:-}" ]]; then
+                continue
+            fi
+            seen_path["$path"]=1
+            name="$(basename -- "$dir")"
+            [[ -n "$name" && "$name" != "*" ]] || continue
+            BSMF_BS_NAMES+=("$name")
+            BSMF_BS_PATHS+=("$path")
+        done
+    done
+    if [[ "$had_nullglob" -eq 0 ]]; then
+        shopt -u nullglob
+    fi
+
+    if [[ "${#BSMF_BS_NAMES[@]}" -gt 1 ]]; then
+        _sort_bs_instances "${BSMF_BS_NAMES[@]}" "${BSMF_BS_PATHS[@]}" || true
+    fi
+    return 0
+}
+
+list_beat_saber_instances() {
+    local name
+    refresh_beat_saber_instances || true
+    for name in "${BSMF_BS_NAMES[@]}"; do
+        [[ -n "$name" ]] || continue
+        printf '%s\n' "$name"
+    done
+    return 0
+}
+
+_select_bs_index() {
+    local idx="$1"
+    BSMF_SELECTED_BS_NAME="${BSMF_BS_NAMES[$idx]}"
+    BSMF_SELECTED_BS_DIR="${BSMF_BS_PATHS[$idx]}"
+    info "$(t bs_version_using "$BSMF_SELECTED_BS_NAME")"
+    debug "Beat Saber dir: $BSMF_SELECTED_BS_DIR"
+    return 0
+}
+
+_report_empty_bs_instances() {
+    local root_hint="$BSMANAGER_DATA_DIR/BSInstances"
+    local -a roots=()
+    local r mark
+    error "$(t bs_version_none_die "$root_hint")"
+    mapfile -t roots < <(beat_saber_instances_root) || true
+    for r in "${roots[@]}"; do
+        [[ -n "$r" ]] || continue
+        if [[ -d "$r" ]]; then
+            mark="[dir ok, no Beat Saber.exe]"
+        else
+            mark="[missing]"
+        fi
+        error "  searched: $r $mark"
+    done
+}
+
 select_beat_saber_version() {
-    local -a versions=()
-    local i answer="" count default_num="" root_hint
-    mapfile -t versions < <(list_beat_saber_instances | grep -v '^$' || true)
-    count="${#versions[@]}"
-    root_hint="$BSMANAGER_DATA_DIR/BSInstances"
+    local i answer="" count=0 default_num=""
+    refresh_beat_saber_instances || true
+    count="${#BSMF_BS_NAMES[@]}"
 
     if [[ "$count" -eq 0 ]]; then
-        error "$(t bs_version_none_die "$root_hint")"
-        local r
-        while IFS= read -r r || [[ -n "$r" ]]; do
-            [[ -n "$r" ]] || continue
-            error "  searched: $r$([[ -d $r ]] && echo ' [dir ok]' || echo ' [missing]')"
-        done < <(beat_saber_instances_root)
-        die "$(t bs_version_none_die "$root_hint")" || return 1
+        _report_empty_bs_instances
+        return 1
     fi
     if [[ -n "$OPT_BS_VERSION" ]]; then
-        local v
-        for v in "${versions[@]}"; do
-            if [[ "$v" == "$OPT_BS_VERSION" ]]; then
-                info "$(t bs_version_using "$v")"
-                printf '%s\n' "$v"
+        for ((i = 0; i < count; i++)); do
+            if [[ "${BSMF_BS_NAMES[$i]}" == "$OPT_BS_VERSION" ]]; then
+                _select_bs_index "$i"
                 return 0
             fi
         done
-        die "Beat Saber version not found: $OPT_BS_VERSION" || return 1
+        error "Beat Saber version not found: $OPT_BS_VERSION"
+        return 1
     fi
 
-    # Non-interactive: single version auto-select; multiple require --version
     if [[ "$FLAG_NON_INTERACTIVE" -eq 1 ]]; then
         if [[ "$count" -eq 1 ]]; then
-            info "$(t bs_version_using "${versions[0]}")"
-            printf '%s\n' "${versions[0]}"
+            _select_bs_index 0
             return 0
         fi
         error "$(t bs_version_prompt)"
         for ((i = 0; i < count; i++)); do
-            error "  - ${versions[$i]}"
+            error "  - ${BSMF_BS_NAMES[$i]}"
         done
-        die "Re-run with --version <Beat Saber version>" || return 1
+        error "Re-run with --version <Beat Saber version>"
+        return 1
     fi
 
-    # Interactive: always propose detected versions as a numbered list (never type the version string)
     tty_open || true
     tty_printf '\n%s\n' "$(t bs_version_prompt)"
     tty_printf '%s\n' "$(t bs_versions_detected)"
     for ((i = 0; i < count; i++)); do
-        tty_printf '  %d) Beat Saber %s\n' "$((i + 1))" "${versions[$i]}"
+        tty_printf '  %d) Beat Saber %s\n' "$((i + 1))" "${BSMF_BS_NAMES[$i]}"
+        tty_printf '      %s\n' "${BSMF_BS_PATHS[$i]}"
     done
     tty_printf '\n'
     default_num="1"
     while true; do
         answer="$(prompt_reply "$(t bs_version_pick_number)" "$default_num")"
         answer="${answer%%[[:space:]]*}"
-        # Accept only a list index — not a free-typed version string
         if [[ "$answer" =~ ^[0-9]+$ ]] && ((answer >= 1 && answer <= count)); then
-            info "$(t bs_version_using "${versions[$((answer - 1))]}")"
-            printf '%s\n' "${versions[$((answer - 1))]}"
+            _select_bs_index "$((answer - 1))"
             return 0
         fi
         tty_printf '%s (%q)\n' "$(t menu_invalid)" "$answer"
@@ -2457,56 +3319,29 @@ discover_compatdata() {
 
     local shared="$BSMANAGER_DATA_DIR/SharedContent"
     local preferred="$shared/compatdata"
-    local -a candidates=()
-    local d
-
-    if [[ -d "$preferred" ]]; then
-        if [[ -d "$preferred/pfx" || -e "$preferred" ]]; then
-            candidates+=("$preferred")
-        fi
-    fi
+    local -a dirs=() valid=()
+    local d canon
 
     if [[ -d "$shared" ]]; then
-        while IFS= read -r d; do
-            [[ -z "$d" ]] && continue
-            [[ "$d" == "$preferred" ]] && continue
-            candidates+=("$d")
-        done < <(find "$shared" -mindepth 1 -maxdepth 1 -type d -name 'compatdata*' 2>/dev/null | sort)
+        mapfile -t dirs < <(find "$shared" -mindepth 1 -maxdepth 1 -type d -name 'compatdata*' 2>/dev/null | sort) || true
     fi
-
-    local -a valid=()
-    for d in "${candidates[@]}"; do
-        if [[ -d "$d/pfx" || -d "$d" ]]; then
-            # Prefer those with pfx
-            if [[ -d "$d/pfx" ]]; then
-                valid+=("$d")
-            fi
-        fi
+    for d in "${dirs[@]}"; do
+        [[ -n "$d" && -d "$d/pfx" ]] || continue
+        valid+=("$d")
     done
-    if [[ "${#valid[@]}" -eq 0 ]]; then
-        for d in "${candidates[@]}"; do
-            valid+=("$d")
-        done
-    fi
 
     if [[ "${#valid[@]}" -eq 0 ]]; then
-        # Create preferred path location guidance; do not invent wineprefix content
-        warn "No compatdata found under $shared"
-        if [[ "$FLAG_NON_INTERACTIVE" -eq 1 ]]; then
-            die "Provide --compatdata PATH"
-        fi
-        mkdir -p "$preferred"
-        printf '%s\n' "$preferred"
-        return 0
+        error "$(t compat_missing "$shared")"
+        return 1
     fi
     if [[ "${#valid[@]}" -eq 1 ]]; then
         printf '%s\n' "$(canonical_path "${valid[0]}")"
         return 0
     fi
-    # Prefer exact SharedContent/compatdata if listed
     for d in "${valid[@]}"; do
-        if [[ "$(canonical_path "$d")" == "$(canonical_path "$preferred")" ]]; then
-            printf '%s\n' "$(canonical_path "$d")"
+        canon="$(canonical_path "$d")"
+        if [[ "$canon" == "$(canonical_path "$preferred")" ]]; then
+            printf '%s\n' "$canon"
             return 0
         fi
     done
@@ -2523,21 +3358,44 @@ sanitize_version_slug() {
 
 create_beat_saber_wrapper() {
     local version="$1"
-    local slug compat steam_root proton_path bs_dir wrapper
+    local bs_dir="${2:-}"
+    local slug compat steam_root proton_path wrapper exe_name
     slug="$(sanitize_version_slug "$version")"
-    bs_dir="$BSMANAGER_DATA_DIR/BSInstances/$version"
-    [[ -f "$bs_dir/Beat Saber.exe" ]] || die "Beat Saber.exe missing in $bs_dir"
+    if [[ -z "$bs_dir" ]]; then
+        bs_dir="${BSMF_SELECTED_BS_DIR:-}"
+    fi
+    if [[ -z "$bs_dir" ]]; then
+        refresh_beat_saber_instances || true
+        local i
+        for ((i = 0; i < ${#BSMF_BS_NAMES[@]}; i++)); do
+            if [[ "${BSMF_BS_NAMES[$i]}" == "$version" ]]; then
+                bs_dir="${BSMF_BS_PATHS[$i]}"
+                break
+            fi
+        done
+    fi
+    if [[ -z "$bs_dir" && -f "$BSMANAGER_DATA_DIR/BSInstances/$version/Beat Saber.exe" ]]; then
+        bs_dir="$BSMANAGER_DATA_DIR/BSInstances/$version"
+    fi
+    [[ -n "$bs_dir" && -d "$bs_dir" ]] || die "Beat Saber folder missing for $version"
+    if [[ -f "$bs_dir/Beat Saber.exe" ]]; then
+        exe_name="Beat Saber.exe"
+    elif [[ -f "$bs_dir/BeatSaber.exe" ]]; then
+        exe_name="BeatSaber.exe"
+    else
+        die "Beat Saber.exe missing in $bs_dir"
+    fi
 
     steam_root="$(find_steam_root)" || die "Steam root not found"
     proton_path="$(resolve_app_install_path "$PROTON_STABLE_APPID")" || die "Proton stable not installed"
     validate_proton_install "$proton_path" "$PROTON_STABLE_LABEL" || return 1
-    compat="$(discover_compatdata)"
+    compat="$(discover_compatdata)" || die "$(t compat_missing "$BSMANAGER_DATA_DIR/SharedContent")"
 
     wrapper="$LOCAL_BIN/beat-saber-${slug}-modded"
     info "Writing wrapper: $wrapper"
 
     if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
-        info "[dry-run] write wrapper for $version"
+        info "[dry-run] write wrapper for $version ($bs_dir)"
         printf '%s\n' "$wrapper"
         return 0
     fi
@@ -2557,8 +3415,8 @@ if [[ ! -x "\$PROTON/proton" && ! -f "\$PROTON/proton" ]]; then
     echo "Proton missing: \$PROTON/proton" >&2
     exit 1
 fi
-if [[ ! -f "\$BS/Beat Saber.exe" ]]; then
-    echo "Beat Saber missing: \$BS/Beat Saber.exe" >&2
+if [[ ! -f "\$BS/${exe_name}" ]]; then
+    echo "Beat Saber missing: \$BS/${exe_name}" >&2
     exit 1
 fi
 if [[ ! -d "\$COMPAT" ]]; then
@@ -2590,7 +3448,7 @@ unset VK_INSTANCE_LAYERS || true
 unset FDM_DEBUG || true
 
 cd "\$BS"
-exec "\$PROTON/proton" run "\$BS/Beat Saber.exe" "\$@"
+exec "\$PROTON/proton" run "\$BS/${exe_name}" "\$@"
 EOF
     chmod +x "$wrapper"
     success "Beat Saber $version wrapper valid"
@@ -2654,6 +3512,7 @@ write_desktop_entry() {
 
 create_desktop_shortcuts() {
     local version="${1:-}"
+    local bs_dir="${2:-}"
     local icon="" exec_bs wrapper slug
     icon="$(find_bsmanager_icon 2>/dev/null || true)"
 
@@ -2669,24 +3528,21 @@ create_desktop_shortcuts() {
     fi
 
     if [[ -z "$version" ]]; then
-        if mapfile -t _vs < <(list_beat_saber_instances); then
-            if [[ "${#_vs[@]}" -gt 0 ]]; then
-                version="$(select_beat_saber_version)"
-            fi
-        fi
+        select_beat_saber_version || return 1
+        version="$BSMF_SELECTED_BS_NAME"
+        bs_dir="$BSMF_SELECTED_BS_DIR"
     fi
+    [[ -n "$version" ]] || return 1
 
-    if [[ -n "$version" ]]; then
-        wrapper="$(create_beat_saber_wrapper "$version")"
-        slug="$(sanitize_version_slug "$version")"
-        write_desktop_entry \
-            "$APPLICATIONS_DIR/beat-saber-${slug}-modded.desktop" \
-            "Beat Saber ${version} Modded" \
-            "$(desktop_escape_exec "$wrapper")" \
-            "$icon" \
-            "Steam Frame modded Beat Saber launcher"
-        success "Desktop entry: beat-saber-${slug}-modded.desktop"
-    fi
+    wrapper="$(create_beat_saber_wrapper "$version" "$bs_dir")" || return 1
+    slug="$(sanitize_version_slug "$version")"
+    write_desktop_entry \
+        "$APPLICATIONS_DIR/beat-saber-${slug}-modded.desktop" \
+        "Beat Saber ${version} Modded" \
+        "$(desktop_escape_exec "$wrapper")" \
+        "$icon" \
+        "Steam Frame modded Beat Saber launcher"
+    success "Desktop entry: beat-saber-${slug}-modded.desktop"
 
     if command -v update-desktop-database >/dev/null 2>&1; then
         run_cmd update-desktop-database "$APPLICATIONS_DIR" || true
@@ -2739,11 +3595,24 @@ detect_steam_cdp_port() {
 
 steam_shortcuts_cdp() {
     local version="$1"
-    local wrapper slug bs_dir port venv
+    local bs_dir="${2:-${BSMF_SELECTED_BS_DIR:-}}"
+    local wrapper slug port venv
     slug="$(sanitize_version_slug "$version")"
     wrapper="$LOCAL_BIN/beat-saber-${slug}-modded"
-    bs_dir="$BSMANAGER_DATA_DIR/BSInstances/$version"
-    [[ -x "$wrapper" ]] || wrapper="$(create_beat_saber_wrapper "$version")"
+    if [[ -z "$bs_dir" ]]; then
+        refresh_beat_saber_instances || true
+        local i
+        for ((i = 0; i < ${#BSMF_BS_NAMES[@]}; i++)); do
+            if [[ "${BSMF_BS_NAMES[$i]}" == "$version" ]]; then
+                bs_dir="${BSMF_BS_PATHS[$i]}"
+                break
+            fi
+        done
+    fi
+    [[ -n "$bs_dir" ]] || return 1
+    if [[ ! -x "$wrapper" ]]; then
+        wrapper="$(create_beat_saber_wrapper "$version" "$bs_dir")" || return 1
+    fi
 
     if ! port="$(detect_steam_cdp_port)"; then
         warn "Steam CDP endpoint not detected on ports: $CDP_PORT_CANDIDATES"
@@ -2929,6 +3798,87 @@ report_line() {
     printf '%-36s %s\n' "$label:" "$value"
 }
 
+report_steam_frame_bsmanager() {
+    local prov="$BSMANAGER_INSTALL_DIR/$BSMANAGER_PROVENANCE_NAME"
+    local kind="" json="" meta="" err="" info_path="" remote_commit="" installed_commit=""
+    echo "---- $(t diag_sf_heading) ----"
+    printf '%s\n' "$(t bsm_sf_repo "$BSMANAGER_FRAME_RELEASE_REPO")"
+    report_line "BSManager upstream" "$UPSTREAM_BSMANAGER_REPO"
+    if [[ -e "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
+        report_line "path" "$BSMANAGER_INSTALL_DIR"
+        report_line "architecture" "$(file_arch_of "$BSMANAGER_INSTALL_DIR/bs-manager")"
+        report_line "status" "installed"
+    else
+        report_line "status" "not installed"
+    fi
+    if [[ -f "$prov" ]]; then
+        kind="$(_bsm_json_field "$prov" source_kind)"
+        case "$kind" in
+            steam-frame-release|"")
+                printf '%s\n' "$(t bsm_sf_source_release)"
+                report_line "source" "$(_bsm_json_field "$prov" source_repository)"
+                report_line "branch" "$(_bsm_json_field "$prov" source_branch)"
+                report_line "release" "$(_bsm_json_field "$prov" release_tag)"
+                report_line "commit" "$(_bsm_json_field "$prov" source_commit)"
+                report_line "BSManager version" "$(_bsm_json_field "$prov" bsmanager_version)"
+                ;;
+            custom-url)
+                printf '%s\n' "$(t bsm_sf_source_url)"
+                report_line "url" "$(_bsm_json_field "$prov" source_url)"
+                ;;
+            local-directory)
+                printf '%s\n' "$(t bsm_sf_source_dir)"
+                report_line "path" "$(_bsm_json_field "$prov" source_path)"
+                ;;
+            *)
+                printf '%s\n' "$(t bsm_sf_legacy)"
+                ;;
+        esac
+    elif [[ -e "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
+        printf '%s\n' "$(t bsm_sf_legacy)"
+    fi
+
+    echo "---- $(t diag_sf_latest) ----"
+    json="$(make_temp_file)"
+    if ! fetch_bsmanager_frame_releases_json "$json"; then
+        printf '%s\n' "$(t diag_sf_unavailable "network")"
+        return 0
+    fi
+    meta="$(make_temp_file)"
+    if ! select_latest_bsmanager_frame_release "$json" >"$meta"; then
+        printf '%s\n' "$(t diag_sf_unavailable "malformed")"
+        return 0
+    fi
+    if [[ "$(_bsm_json_field "$meta" ok)" != "true" ]]; then
+        err="$(_bsm_json_field "$meta" error)"
+        printf '%s\n' "$(t diag_sf_unavailable "${err:-unknown}")"
+        return 0
+    fi
+    report_line "tag" "$(_bsm_json_field "$meta" tag_name)"
+    report_line "published" "$(_bsm_json_field "$meta" published_at)"
+    info_path="$(make_temp_file)"
+    if ! download_bsmanager_frame_asset "$(_bsm_json_field "$meta" build_info_url)" "$info_path"; then
+        printf '%s\n' "$(t diag_sf_unavailable "build-info")"
+        return 0
+    fi
+    if ! remote_commit="$(validate_bsmanager_frame_build_info "$info_path")"; then
+        printf '%s\n' "$(t diag_sf_unavailable "build-info")"
+        return 0
+    fi
+    report_line "commit" "$remote_commit"
+    if [[ -e "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
+        installed_commit="$(installed_steam_frame_commit 2>/dev/null || true)"
+        if [[ -n "$installed_commit" && "$installed_commit" == "$remote_commit" ]]; then
+            report_line "update available" "no"
+        else
+            report_line "update available" "yes"
+        fi
+    else
+        report_line "update available" "n/a"
+    fi
+    return 0
+}
+
 cmd_diagnose() {
     local steam_root="" status arch
     arch="$(detect_arch)"
@@ -3010,16 +3960,27 @@ cmd_diagnose() {
         report_line "prefix-proton-folder in config" "n/a"
     fi
 
+    report_steam_frame_bsmanager || true
+
     echo "---- Beat Saber instances ----"
-    local -a versions=() roots=()
-    mapfile -t roots < <(beat_saber_instances_root)
+    refresh_beat_saber_instances || true
+    local -a roots=()
+    local r i
+    mapfile -t roots < <(beat_saber_instances_root) || true
     printf 'Search roots:\n'
-    printf '  %s\n' "${roots[@]}"
-    mapfile -t versions < <(list_beat_saber_instances)
-    if [[ "${#versions[@]}" -eq 0 ]]; then
+    for r in "${roots[@]}"; do
+        if [[ -d "$r" ]]; then
+            printf '  %s [dir ok]\n' "$r"
+        else
+            printf '  %s [missing]\n' "$r"
+        fi
+    done
+    if [[ "${#BSMF_BS_NAMES[@]}" -eq 0 ]]; then
         echo "(none)"
     else
-        printf '%s\n' "${versions[@]}"
+        for ((i = 0; i < ${#BSMF_BS_NAMES[@]}; i++)); do
+            printf '%s\t%s\n' "${BSMF_BS_NAMES[$i]}" "${BSMF_BS_PATHS[$i]}"
+        done
     fi
 
     echo "---- compatdata candidates ----"
@@ -3289,10 +4250,9 @@ cmd_proton() {
 
 cmd_shortcuts() {
     assert_platform_or_force
-    local version
-    version="$(select_beat_saber_version)"
-    create_desktop_shortcuts "$version"
-    if steam_shortcuts_cdp "$version"; then
+    select_beat_saber_version || return 1
+    create_desktop_shortcuts "$BSMF_SELECTED_BS_NAME" "$BSMF_SELECTED_BS_DIR" || return 1
+    if steam_shortcuts_cdp "$BSMF_SELECTED_BS_NAME" "$BSMF_SELECTED_BS_DIR"; then
         success "Steam shortcut operation finished"
     else
         warn "Steam shortcut repair incomplete — see messages above"
@@ -3342,7 +4302,7 @@ cmd_update() {
     assert_platform_or_force
     ensure_user_dirs
     warn_bsmanager_duplicate_installations || true
-    info "Checking latest BSManager release..."
+    info "Checking Steam Frame native BSManager builds..."
     # Preserves install type: native stays native; Flatpak only updates with --allow-flatpak
     local rc=0
     cmd_install_bsmanager || rc=$?
@@ -3364,11 +4324,10 @@ cmd_setup() {
 # =============================================================================
 
 menu_launchers() {
-    local v wrapper
-    v="$(select_beat_saber_version)" || return 1
-    wrapper="$(create_beat_saber_wrapper "$v")" || return 1
-    success "Lanceur prêt: $wrapper"
-    info "Menu 5 = entrée bureau + réparation raccourci Steam (en plus du wrapper)."
+    select_beat_saber_version || return 1
+    create_beat_saber_wrapper "$BSMF_SELECTED_BS_NAME" "$BSMF_SELECTED_BS_DIR" >/dev/null || return 1
+    success "$(t launcher_ready "$LOCAL_BIN/beat-saber-$(sanitize_version_slug "$BSMF_SELECTED_BS_NAME")-modded")"
+    info "$(t launcher_hint_menu5)"
 }
 
 show_menu() {
@@ -3376,22 +4335,36 @@ show_menu() {
         die "$(t menu_needs_tty)"
     fi
     local choice=""
-    local -a bs_versions=()
-    local v n_bs=0
+    local n_bs=0
+    local i=0
+    local -a _roots=()
+    local _r=""
     tty_open || true
     while true; do
-        mapfile -t bs_versions < <(list_beat_saber_instances | grep -v '^$' || true)
-        n_bs="${#bs_versions[@]}"
+        refresh_beat_saber_instances || true
+        n_bs="${#BSMF_BS_NAMES[@]}"
 
         tty_printf '\n%s\n\n' "$(t menu_banner "$VERSION")"
         if [[ "$n_bs" -gt 0 ]]; then
             tty_printf '%s\n' "$(t bs_versions_detected)"
-            for v in "${bs_versions[@]}"; do
-                tty_printf '  - %s\n' "$v"
+            for ((i = 0; i < n_bs; i++)); do
+                tty_printf '  - %s\n' "${BSMF_BS_NAMES[$i]}"
+                tty_printf '    %s\n' "${BSMF_BS_PATHS[$i]}"
             done
             tty_printf '\n'
         else
-            tty_printf '%s\n\n' "$(t bs_versions_none)"
+            tty_printf '%s\n' "$(t bs_versions_none)"
+            _roots=()
+            mapfile -t _roots < <(beat_saber_instances_root) || true
+            for _r in "${_roots[@]}"; do
+                [[ -n "$_r" ]] || continue
+                if [[ -d "$_r" ]]; then
+                    tty_printf '  %s [dir ok]\n' "$_r"
+                else
+                    tty_printf '  %s [missing]\n' "$_r"
+                fi
+            done
+            tty_printf '\n'
         fi
         tty_printf '1) %s\n' "$(t menu_1)"
         tty_printf '2) %s\n' "$(t menu_2)"
@@ -3443,7 +4416,8 @@ Usage:
 
 Commands:
   install          Detect platform, Proton, install/repair BSManager
-  update           Update BSManager application (preserves user data)
+                   (native build: Steam Frame releases from sannier3/bs-manager)
+  update           Update BSManager from the latest valid steam-frame-* release
   setup            Alias for install
   proton           Ensure Proton stack and configure BSManager paths
   shortcuts        Create/repair wrappers, desktop entries, Steam shortcuts
@@ -3461,9 +4435,9 @@ Global options:
   --dry-run            Print actions without mutating
   --verbose            Debug logging to stderr
   --force              Continue on unknown platform / force reinstall
-  --allow-flatpak      Allow explicit Flatpak fallback when no native ARM64
-                       build is available. Disabled by default (not recommended
-                       as the normal Steam Frame path).
+  --allow-flatpak      Experimental opt-in only. The official Flatpak v1.6.0
+                       predates the Steam Frame fixes (including PR #1136)
+                       and is not a validated Frame-compatible alternative.
   --lang <code>        UI language: en, fr, es, de, sw
   --help               Show help
   --version            Show version
@@ -3480,7 +4454,12 @@ Command options:
 Environment:
   BSMF_LANG, BSMF_ALLOW_FLATPAK, BSMF_PROTON_STABLE_APPID,
   BSMF_PROTON_EXPERIMENTAL_APPID, BSMF_STEAM_RUNTIME_ARM64_APPID,
-  BSMF_STEAM_INSTALL_TIMEOUT, BSMANAGER_ASSET_URL, GITHUB_TOKEN, NO_COLOR
+  BSMF_STEAM_INSTALL_TIMEOUT, BSMF_STEAM_POLL_INTERVAL,
+  BSMANAGER_ASSET_URL, GITHUB_TOKEN, NO_COLOR
+  BSMF_BSMANAGER_RELEASE_REPO       Advanced: Steam Frame release repo
+                                    (default sannier3/bs-manager)
+  BSMF_BSMANAGER_RELEASE_TAG_PREFIX Advanced: release tag prefix
+                                    (default steam-frame-)
 
 Logs:
   ${XDG_STATE_HOME:-~/.local/state}/bsmanager-frame/bsmanager-frame.log
@@ -3620,5 +4599,9 @@ main() {
     esac
     return "$rc"
 }
+
+if [[ "${BSMF_LIB_ONLY:-0}" == "1" ]]; then
+    return 0 2>/dev/null || exit 0
+fi
 
 main "$@" || exit $?

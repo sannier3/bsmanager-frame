@@ -5,7 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - Unreleased
+## [0.2.0] - 2026-10-17
+
+### Added
+
+- Default native BSManager source is the unofficial Steam Frame Releases from
+  `sannier3/bs-manager` (`steam-frame-*`), not official upstream archives.
+- Release selection requires `BSManager-SteamFrame-linux-arm64.tar.gz`,
+  `SHA256SUMS`, and `build-info.json`.
+- Provenance checks on `build-info.json` (repository, branch, architecture,
+  artifact, commit).
+- SHA256 verification before extraction, plus archive path checks.
+  Symlink and hardlink targets must also stay inside `bs-manager/`.
+  ARM64 ELF validation of the full Electron tree.
+- Missing Proton 11 ARM64, Proton Experimental ARM64, and Steam Linux
+  Runtime ARM64 are requested with `steam://install/<appid>`, then monitored
+  from the Steam appmanifest (headset confirmation, download progress,
+  `StateFlags` bitmask, then real file checks) before setup continues.
+- A missing BSManager `config.json` is created with the installed Proton
+  folders. A first launch of BSManager is not required for that.
+- Installed build metadata in `~/.local/opt/bs-manager/.bsmanager-frame-build.json`.
+- Update detection by source commit, including legacy native installs that
+  have no provenance file yet.
+
+### Changed
+
+- Official `Zagrios/bs-manager` native release lookup is no longer the normal
+  Steam Frame install/update path, and it is not a silent fallback.
+- Flatpak remains an explicit opt-in (`--allow-flatpak` / `BSMF_ALLOW_FLATPAK`)
+  and is documented as experimental. Official Flatpak v1.6.0 is not a
+  Frame-compatible alternative: it predates PR #1136.
+- The Steam Frame fork is described as manually merged, not fully
+  synchronized with upstream. Synchronization will be automated.
+- `--bsmanager-url` and `--bsmanager-dir` remain supported and take precedence.
+- `--force` can reinstall the same commit; it does not skip checksum,
+  provenance, or architecture checks.
+- An existing native install is kept when no valid Steam Frame Release can be
+  downloaded.
+
+## [0.1.0] - 2026-10-17
 
 ### Added
 
