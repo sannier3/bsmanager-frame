@@ -1253,7 +1253,10 @@ safe_rm() {
 BSMF_TTY_FD=""
 
 have_tty() {
-    [[ -r /dev/tty && -w /dev/tty ]]
+    # Permission bits are not enough: in CI /dev/tty exists, but open() fails
+    # with ENXIO when the process has no controlling terminal.
+    [[ -e /dev/tty ]] || return 1
+    { : >/dev/tty; } 2>/dev/null || return 1
 }
 
 tty_open() {
@@ -2013,12 +2016,12 @@ steam_report_validated_files() {
 steam_status_line() {
     local msg="$1"
     have_tty || return 0
-    printf '\r\033[K%s' "$msg" >/dev/tty
+    printf '\r\033[K%s' "$msg" >/dev/tty 2>/dev/null || true
 }
 
 steam_status_finish() {
     have_tty || return 0
-    printf '\r\033[K' >/dev/tty
+    printf '\r\033[K' >/dev/tty 2>/dev/null || true
 }
 
 request_steam_install() {
