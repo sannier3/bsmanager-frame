@@ -97,6 +97,7 @@ BSMF_LAUNCHER_LABELS=()
 BSMF_LAUNCHER_DIRS=()
 BSMF_LAUNCHER_HAS_WRAPPER=()
 BSMF_LAUNCHER_HAS_DESKTOP=()
+BSMF_LAUNCHER_HAS_BUREAU=()
 BSMF_LAUNCHER_ORPHAN=()
 
 # =============================================================================
@@ -332,7 +333,7 @@ _t_en() {
         launcher_add) printf '%s' "Add or repair a version" ;;
         launcher_delete) printf '%s' "Delete a launcher" ;;
         launcher_back) printf '%s' "Back" ;;
-        launcher_line) printf '%s' "%s — command %s, desktop %s%s" ;;
+        launcher_line) printf '%s' "%s — start menu %s, desktop %s%s" ;;
         launcher_present) printf '%s' "present" ;;
         launcher_absent) printf '%s' "absent" ;;
         launcher_orphan) printf '%s' ", folder missing" ;;
@@ -348,6 +349,22 @@ _t_en() {
         launcher_desktop_ready) printf '%s' "Desktop shortcut ready: %s" ;;
         launcher_desktop_removed) printf '%s' "Desktop shortcut removed: %s" ;;
         launcher_desktop_absent) printf '%s' "No desktop shortcut for %s" ;;
+        launcher_menu_state) printf '%s' "Start menu: %s" ;;
+        launcher_bureau_state) printf '%s' "Desktop: %s" ;;
+        launcher_steam_state) printf '%s' "Steam: %s" ;;
+        launcher_steam_unknown) printf '%s' "not visible" ;;
+        launcher_menu_add) printf '%s' "Add or repair the start menu shortcut" ;;
+        launcher_menu_remove) printf '%s' "Remove the start menu shortcut" ;;
+        launcher_bureau_add) printf '%s' "Add or repair the desktop shortcut" ;;
+        launcher_bureau_remove) printf '%s' "Remove the desktop shortcut" ;;
+        launcher_steam_add) printf '%s' "Add or repair the Steam shortcut" ;;
+        launcher_steam_remove) printf '%s' "Remove the Steam shortcut" ;;
+        launcher_menu_ready) printf '%s' "Start menu shortcut ready: %s" ;;
+        launcher_menu_removed) printf '%s' "Start menu shortcut removed: %s" ;;
+        launcher_menu_absent) printf '%s' "No start menu shortcut for %s" ;;
+        launcher_bureau_ready) printf '%s' "Desktop shortcut ready: %s" ;;
+        launcher_bureau_removed) printf '%s' "Desktop shortcut removed: %s" ;;
+        launcher_bureau_absent) printf '%s' "No desktop shortcut for %s" ;;
         launcher_steam_open) printf '%s' "Steam shortcut" ;;
         launcher_steam_create_item) printf '%s' "Create a Steam shortcut" ;;
         launcher_steam_recreate_item) printf '%s' "Recreate the Steam shortcut" ;;
@@ -493,7 +510,7 @@ _t_fr() {
         launcher_add) printf '%s' "Ajouter ou réparer une version" ;;
         launcher_delete) printf '%s' "Supprimer un lanceur" ;;
         launcher_back) printf '%s' "Retour" ;;
-        launcher_line) printf '%s' "%s — commande %s, bureau %s%s" ;;
+        launcher_line) printf '%s' "%s — menu %s, bureau %s%s" ;;
         launcher_present) printf '%s' "présent" ;;
         launcher_absent) printf '%s' "absent" ;;
         launcher_orphan) printf '%s' ", dossier manquant" ;;
@@ -509,6 +526,22 @@ _t_fr() {
         launcher_desktop_ready) printf '%s' "Raccourci bureau prêt : %s" ;;
         launcher_desktop_removed) printf '%s' "Raccourci bureau retiré : %s" ;;
         launcher_desktop_absent) printf '%s' "Pas de raccourci bureau pour %s" ;;
+        launcher_menu_state) printf '%s' "Menu Démarrer : %s" ;;
+        launcher_bureau_state) printf '%s' "Bureau : %s" ;;
+        launcher_steam_state) printf '%s' "Steam : %s" ;;
+        launcher_steam_unknown) printf '%s' "non visible" ;;
+        launcher_menu_add) printf '%s' "Ajouter ou réparer le menu Démarrer" ;;
+        launcher_menu_remove) printf '%s' "Supprimer le menu Démarrer" ;;
+        launcher_bureau_add) printf '%s' "Ajouter ou réparer le raccourci bureau" ;;
+        launcher_bureau_remove) printf '%s' "Supprimer le raccourci bureau" ;;
+        launcher_steam_add) printf '%s' "Ajouter ou réparer le raccourci Steam" ;;
+        launcher_steam_remove) printf '%s' "Supprimer le raccourci Steam" ;;
+        launcher_menu_ready) printf '%s' "Raccourci du menu Démarrer prêt : %s" ;;
+        launcher_menu_removed) printf '%s' "Raccourci du menu Démarrer retiré : %s" ;;
+        launcher_menu_absent) printf '%s' "Pas de raccourci du menu Démarrer pour %s" ;;
+        launcher_bureau_ready) printf '%s' "Raccourci bureau prêt : %s" ;;
+        launcher_bureau_removed) printf '%s' "Raccourci bureau retiré : %s" ;;
+        launcher_bureau_absent) printf '%s' "Pas de raccourci bureau pour %s" ;;
         launcher_steam_open) printf '%s' "Raccourci Steam" ;;
         launcher_steam_create_item) printf '%s' "Créer un raccourci Steam" ;;
         launcher_steam_recreate_item) printf '%s' "Recréer le raccourci Steam" ;;
@@ -654,7 +687,7 @@ _t_es() {
         launcher_add) printf '%s' "Añadir o reparar una versión" ;;
         launcher_delete) printf '%s' "Eliminar un lanzador" ;;
         launcher_back) printf '%s' "Volver" ;;
-        launcher_line) printf '%s' "%s — comando %s, escritorio %s%s" ;;
+        launcher_line) printf '%s' "%s — menú %s, escritorio %s%s" ;;
         launcher_present) printf '%s' "presente" ;;
         launcher_absent) printf '%s' "ausente" ;;
         launcher_orphan) printf '%s' ", carpeta ausente" ;;
@@ -670,6 +703,22 @@ _t_es() {
         launcher_desktop_ready) printf '%s' "Acceso de escritorio listo: %s" ;;
         launcher_desktop_removed) printf '%s' "Acceso de escritorio quitado: %s" ;;
         launcher_desktop_absent) printf '%s' "No hay acceso de escritorio para %s" ;;
+        launcher_menu_state) printf '%s' "Menú de inicio: %s" ;;
+        launcher_bureau_state) printf '%s' "Escritorio: %s" ;;
+        launcher_steam_state) printf '%s' "Steam: %s" ;;
+        launcher_steam_unknown) printf '%s' "no visible" ;;
+        launcher_menu_add) printf '%s' "Añadir o reparar el acceso del menú de inicio" ;;
+        launcher_menu_remove) printf '%s' "Quitar el acceso del menú de inicio" ;;
+        launcher_bureau_add) printf '%s' "Añadir o reparar el acceso del escritorio" ;;
+        launcher_bureau_remove) printf '%s' "Quitar el acceso del escritorio" ;;
+        launcher_steam_add) printf '%s' "Añadir o reparar el acceso de Steam" ;;
+        launcher_steam_remove) printf '%s' "Quitar el acceso de Steam" ;;
+        launcher_menu_ready) printf '%s' "Acceso del menú de inicio listo: %s" ;;
+        launcher_menu_removed) printf '%s' "Acceso del menú de inicio quitado: %s" ;;
+        launcher_menu_absent) printf '%s' "No hay acceso del menú de inicio para %s" ;;
+        launcher_bureau_ready) printf '%s' "Acceso del escritorio listo: %s" ;;
+        launcher_bureau_removed) printf '%s' "Acceso del escritorio quitado: %s" ;;
+        launcher_bureau_absent) printf '%s' "No hay acceso del escritorio para %s" ;;
         launcher_steam_open) printf '%s' "Acceso de Steam" ;;
         launcher_steam_create_item) printf '%s' "Crear un acceso de Steam" ;;
         launcher_steam_recreate_item) printf '%s' "Recrear el acceso de Steam" ;;
@@ -815,7 +864,7 @@ _t_de() {
         launcher_add) printf '%s' "Version hinzufügen oder reparieren" ;;
         launcher_delete) printf '%s' "Starter löschen" ;;
         launcher_back) printf '%s' "Zurück" ;;
-        launcher_line) printf '%s' "%s — Befehl %s, Desktop %s%s" ;;
+        launcher_line) printf '%s' "%s — Startmenü %s, Desktop %s%s" ;;
         launcher_present) printf '%s' "vorhanden" ;;
         launcher_absent) printf '%s' "fehlt" ;;
         launcher_orphan) printf '%s' ", Ordner fehlt" ;;
@@ -831,6 +880,22 @@ _t_de() {
         launcher_desktop_ready) printf '%s' "Desktop-Verknüpfung bereit: %s" ;;
         launcher_desktop_removed) printf '%s' "Desktop-Verknüpfung entfernt: %s" ;;
         launcher_desktop_absent) printf '%s' "Keine Desktop-Verknüpfung für %s" ;;
+        launcher_menu_state) printf '%s' "Startmenü: %s" ;;
+        launcher_bureau_state) printf '%s' "Desktop: %s" ;;
+        launcher_steam_state) printf '%s' "Steam: %s" ;;
+        launcher_steam_unknown) printf '%s' "nicht sichtbar" ;;
+        launcher_menu_add) printf '%s' "Startmenü-Verknüpfung hinzufügen oder reparieren" ;;
+        launcher_menu_remove) printf '%s' "Startmenü-Verknüpfung entfernen" ;;
+        launcher_bureau_add) printf '%s' "Desktop-Verknüpfung hinzufügen oder reparieren" ;;
+        launcher_bureau_remove) printf '%s' "Desktop-Verknüpfung entfernen" ;;
+        launcher_steam_add) printf '%s' "Steam-Verknüpfung hinzufügen oder reparieren" ;;
+        launcher_steam_remove) printf '%s' "Steam-Verknüpfung entfernen" ;;
+        launcher_menu_ready) printf '%s' "Startmenü-Verknüpfung bereit: %s" ;;
+        launcher_menu_removed) printf '%s' "Startmenü-Verknüpfung entfernt: %s" ;;
+        launcher_menu_absent) printf '%s' "Keine Startmenü-Verknüpfung für %s" ;;
+        launcher_bureau_ready) printf '%s' "Desktop-Verknüpfung bereit: %s" ;;
+        launcher_bureau_removed) printf '%s' "Desktop-Verknüpfung entfernt: %s" ;;
+        launcher_bureau_absent) printf '%s' "Keine Desktop-Verknüpfung für %s" ;;
         launcher_steam_open) printf '%s' "Steam-Verknüpfung" ;;
         launcher_steam_create_item) printf '%s' "Steam-Verknüpfung erstellen" ;;
         launcher_steam_recreate_item) printf '%s' "Steam-Verknüpfung neu erstellen" ;;
@@ -976,7 +1041,7 @@ _t_sw() {
         launcher_add) printf '%s' "Ongeza au rekebisha toleo" ;;
         launcher_delete) printf '%s' "Futa kizinduzi" ;;
         launcher_back) printf '%s' "Rudi" ;;
-        launcher_line) printf '%s' "%s — amri %s, desktop %s%s" ;;
+        launcher_line) printf '%s' "%s — menyu %s, desktop %s%s" ;;
         launcher_present) printf '%s' "ipo" ;;
         launcher_absent) printf '%s' "haipo" ;;
         launcher_orphan) printf '%s' ", folda haipo" ;;
@@ -992,6 +1057,22 @@ _t_sw() {
         launcher_desktop_ready) printf '%s' "Njia ya mkato ya desktop iko tayari: %s" ;;
         launcher_desktop_removed) printf '%s' "Njia ya mkato ya desktop imeondolewa: %s" ;;
         launcher_desktop_absent) printf '%s' "Hakuna njia ya mkato ya desktop kwa %s" ;;
+        launcher_menu_state) printf '%s' "Menyu ya kuanzia: %s" ;;
+        launcher_bureau_state) printf '%s' "Desktop: %s" ;;
+        launcher_steam_state) printf '%s' "Steam: %s" ;;
+        launcher_steam_unknown) printf '%s' "haionekani" ;;
+        launcher_menu_add) printf '%s' "Ongeza au rekebisha njia ya menyu ya kuanzia" ;;
+        launcher_menu_remove) printf '%s' "Ondoa njia ya menyu ya kuanzia" ;;
+        launcher_bureau_add) printf '%s' "Ongeza au rekebisha njia ya desktop" ;;
+        launcher_bureau_remove) printf '%s' "Ondoa njia ya desktop" ;;
+        launcher_steam_add) printf '%s' "Ongeza au rekebisha njia ya Steam" ;;
+        launcher_steam_remove) printf '%s' "Ondoa njia ya Steam" ;;
+        launcher_menu_ready) printf '%s' "Njia ya menyu ya kuanzia iko tayari: %s" ;;
+        launcher_menu_removed) printf '%s' "Njia ya menyu ya kuanzia imeondolewa: %s" ;;
+        launcher_menu_absent) printf '%s' "Hakuna njia ya menyu ya kuanzia kwa %s" ;;
+        launcher_bureau_ready) printf '%s' "Njia ya desktop iko tayari: %s" ;;
+        launcher_bureau_removed) printf '%s' "Njia ya desktop imeondolewa: %s" ;;
+        launcher_bureau_absent) printf '%s' "Hakuna njia ya desktop kwa %s" ;;
         launcher_steam_open) printf '%s' "Njia ya mkato ya Steam" ;;
         launcher_steam_create_item) printf '%s' "Unda njia ya mkato ya Steam" ;;
         launcher_steam_recreate_item) printf '%s' "Unda upya njia ya mkato ya Steam" ;;
@@ -1290,7 +1371,7 @@ run_cmd() {
 
 is_safe_remove_path() {
     local path="${1:-}"
-    local resolved
+    local resolved desk=""
     [[ -z "$path" ]] && return 1
     [[ "$path" == "/" ]] && return 1
     [[ "$path" == "." || "$path" == ".." ]] && return 1
@@ -1310,6 +1391,10 @@ is_safe_remove_path() {
     fi
     [[ -z "$resolved" || "$resolved" == "/" ]] && return 1
     [[ "$resolved" == "$HOME" ]] && return 1
+    desk="$(user_desktop_dir)"
+    if command -v realpath >/dev/null 2>&1; then
+        desk="$(realpath -m "$desk" 2>/dev/null || printf '%s' "$desk")"
+    fi
 
     case "$resolved" in
         "$TOOL_DATA_DIR"|"$TOOL_DATA_DIR"/*) return 0 ;;
@@ -1317,6 +1402,7 @@ is_safe_remove_path() {
         "$BSMANAGER_INSTALL_DIR"|"$BSMANAGER_INSTALL_DIR"/*) return 0 ;;
         "$LOCAL_BIN"/bsmanager-frame|"$LOCAL_BIN"/bs-manager|"$LOCAL_BIN"/beat-saber-*) return 0 ;;
         "$APPLICATIONS_DIR"/bs-manager.desktop|"$APPLICATIONS_DIR"/bsmanager-frame.desktop|"$APPLICATIONS_DIR"/beat-saber-*-modded.desktop) return 0 ;;
+        "$(user_desktop_dir)"/beat-saber-*-modded.desktop|"$desk"/beat-saber-*-modded.desktop) return 0 ;;
         "$BSMANAGER_CONFIG_DIR"|"$BSMANAGER_CONFIG_DIR"/*) return 0 ;;
         "$TOOL_TMP_DIR"|"$TOOL_TMP_DIR"/*) return 0 ;;
         "$TOOL_DATA_DIR"/backups|"$TOOL_DATA_DIR"/backups/*) return 0 ;;
@@ -3628,6 +3714,30 @@ launcher_desktop_path() {
     printf '%s\n' "$APPLICATIONS_DIR/beat-saber-$(sanitize_version_slug "$1")-modded.desktop"
 }
 
+user_desktop_dir() {
+    local conf="${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs"
+    local line="" dir=""
+    if [[ -f "$conf" ]]; then
+        line="$(grep -E '^XDG_DESKTOP_DIR=' "$conf" 2>/dev/null | head -n 1 || true)"
+        dir="${line#XDG_DESKTOP_DIR=}"
+        dir="${dir%\"}"
+        dir="${dir#\"}"
+        dir="${dir//\$HOME/$HOME}"
+    fi
+    if [[ -z "$dir" || "$dir" == "$HOME" ]]; then
+        if [[ -d "$HOME/Bureau" && ! -d "$HOME/Desktop" ]]; then
+            dir="$HOME/Bureau"
+        else
+            dir="$HOME/Desktop"
+        fi
+    fi
+    printf '%s\n' "$dir"
+}
+
+launcher_bureau_path() {
+    printf '%s\n' "$(user_desktop_dir)/beat-saber-$(sanitize_version_slug "$1")-modded.desktop"
+}
+
 _norm_shortcut_path() {
     local p="${1:-}"
     p="${p//\\//}"
@@ -3675,11 +3785,13 @@ shortcut_matches_instance() {
 
 _launcher_record() {
     local slug="$1" label="$2" dir="$3" orphan="$4"
-    local wrapper desktop has_wrapper=0 has_desktop=0 i
+    local wrapper desktop bureau has_wrapper=0 has_desktop=0 has_bureau=0 i
     wrapper="$(launcher_wrapper_path "$slug")"
     desktop="$(launcher_desktop_path "$slug")"
+    bureau="$(launcher_bureau_path "$slug")"
     [[ -e "$wrapper" ]] && has_wrapper=1
     [[ -e "$desktop" ]] && has_desktop=1
+    [[ -e "$bureau" ]] && has_bureau=1
     for ((i = 0; i < ${#BSMF_LAUNCHER_SLUGS[@]}; i++)); do
         if [[ "${BSMF_LAUNCHER_SLUGS[$i]}" == "$slug" ]]; then
             return 0
@@ -3690,6 +3802,7 @@ _launcher_record() {
     BSMF_LAUNCHER_DIRS+=("$dir")
     BSMF_LAUNCHER_HAS_WRAPPER+=("$has_wrapper")
     BSMF_LAUNCHER_HAS_DESKTOP+=("$has_desktop")
+    BSMF_LAUNCHER_HAS_BUREAU+=("$has_bureau")
     BSMF_LAUNCHER_ORPHAN+=("$orphan")
 }
 
@@ -3701,6 +3814,7 @@ refresh_managed_launchers() {
     BSMF_LAUNCHER_DIRS=()
     BSMF_LAUNCHER_HAS_WRAPPER=()
     BSMF_LAUNCHER_HAS_DESKTOP=()
+    BSMF_LAUNCHER_HAS_BUREAU=()
     BSMF_LAUNCHER_ORPHAN=()
     refresh_beat_saber_instances || true
     for ((i = 0; i < ${#BSMF_BS_NAMES[@]}; i++)); do
@@ -3720,6 +3834,14 @@ refresh_managed_launchers() {
         _launcher_record "$slug" "$slug" "" 1
     done
     for desktop in "$APPLICATIONS_DIR"/beat-saber-*-modded.desktop; do
+        base="$(basename -- "$desktop" .desktop)"
+        slug="${base#beat-saber-}"
+        slug="${slug%-modded}"
+        [[ -n "$slug" && -z "${seen[$slug]:-}" ]] || continue
+        seen["$slug"]=1
+        _launcher_record "$slug" "$slug" "" 1
+    done
+    for desktop in "$(user_desktop_dir)"/beat-saber-*-modded.desktop; do
         base="$(basename -- "$desktop" .desktop)"
         slug="${base#beat-saber-}"
         slug="${slug%-modded}"
@@ -3942,7 +4064,34 @@ install_beat_saber_launcher() {
     if command -v update-desktop-database >/dev/null 2>&1; then
         run_cmd update-desktop-database "$APPLICATIONS_DIR" || true
     fi
-    success "$(t launcher_desktop_ready "beat-saber-${slug}-modded.desktop")"
+    success "$(t launcher_menu_ready "beat-saber-${slug}-modded.desktop")"
+}
+
+install_bureau_launcher() {
+    local version="$1"
+    local bs_dir="$2"
+    local wrapper slug icon="" bureau
+    wrapper="$(create_beat_saber_wrapper "$version" "$bs_dir")" || return 1
+    slug="$(sanitize_version_slug "$version")"
+    bureau="$(launcher_bureau_path "$slug")"
+    icon="$(find_bsmanager_icon 2>/dev/null || true)"
+    write_desktop_entry \
+        "$bureau" \
+        "Beat Saber ${version} Modded" \
+        "$(desktop_escape_exec "$wrapper")" \
+        "$icon" \
+        "Steam Frame modded Beat Saber launcher"
+    success "$(t launcher_bureau_ready "$bureau")"
+}
+
+drop_bureau_launcher() {
+    local slug="$1"
+    local bureau
+    bureau="$(launcher_bureau_path "$slug")"
+    if [[ ! -e "$bureau" && ! -L "$bureau" ]]; then
+        return 1
+    fi
+    safe_rm "$bureau"
 }
 
 drop_desktop_launcher() {
@@ -4588,82 +4737,94 @@ create_steam_shortcut_fresh() {
     success "$(t launcher_steam_created "$version")"
 }
 
-manage_steam_shortcut() {
-    local version="$1" bs_dir="$2"
-    local slug wrapper lines choice="" count=0 result=""
-    local kind="" appid="" name="" exe=""
+steam_shortcut_report() {
+    local version="$1" bs_dir="${2:-}"
+    local slug wrapper lines
+    slug="$(sanitize_version_slug "$version")"
+    wrapper="$(launcher_wrapper_path "$slug")"
+    if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
+        printf 'unreachable\n'
+        return 0
+    fi
+    if ! lines="$(steam_cdp_action list "$wrapper" "$bs_dir" "" "")"; then
+        printf 'unreachable\n'
+        return 0
+    fi
+    if [[ -z "$lines" ]]; then
+        printf 'absent\n'
+        return 0
+    fi
+    printf 'present\n%s\n' "$lines"
+}
+
+steam_add_or_repair() {
+    local version="$1" bs_dir="${2:-}"
+    local report="" state="" count=0 kind="" appid="" name="" exe=""
+    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 || "$FLAG_DRY_RUN" -eq 1 ]]; then
+        info "$(t launcher_steam_leave)"
+        return 0
+    fi
+    if [[ -z "$bs_dir" || ! -d "$bs_dir" ]]; then
+        info "$(t launcher_manage_version "$version")$(t launcher_orphan)"
+        return 0
+    fi
+    report="$(steam_shortcut_report "$version" "$bs_dir")"
+    state="${report%%$'\n'*}"
+    if [[ "$state" == "unreachable" ]]; then
+        warn "$(t launcher_steam_unreachable)"
+        return 0
+    fi
+    if [[ "$state" == "present" ]]; then
+        while IFS=$'\t' read -r kind appid name exe; do
+            [[ "$kind" == "found" ]] || continue
+            count=$((count + 1))
+        done <<< "${report#*$'\n'}"
+        if prompt_confirm_keep "$(t launcher_steam_recreate "$count" "$version")"; then
+            create_steam_shortcut_fresh "$version" "$bs_dir" || true
+        else
+            info "$(t launcher_steam_leave)"
+        fi
+        return 0
+    fi
+    if prompt_confirm_keep "$(t launcher_steam_create "$version")"; then
+        create_steam_shortcut_fresh "$version" "$bs_dir" || true
+    else
+        info "$(t launcher_steam_leave)"
+    fi
+}
+
+steam_remove_shortcut() {
+    local version="$1" bs_dir="${2:-}"
+    local slug wrapper report state result=""
     slug="$(sanitize_version_slug "$version")"
     wrapper="$(launcher_wrapper_path "$slug")"
     if [[ "$FLAG_NON_INTERACTIVE" -eq 1 || "$FLAG_DRY_RUN" -eq 1 ]]; then
         info "$(t launcher_steam_leave)"
         return 0
     fi
-    if ! lines="$(steam_cdp_action list "$wrapper" "$bs_dir" "" "")"; then
+    report="$(steam_shortcut_report "$version" "$bs_dir")"
+    state="${report%%$'\n'*}"
+    if [[ "$state" == "unreachable" ]]; then
         warn "$(t launcher_steam_unreachable)"
         return 0
     fi
-    if [[ -n "$lines" ]]; then
-        while IFS=$'\t' read -r kind appid name exe; do
-            [[ "$kind" == "found" ]] || continue
-            count=$((count + 1))
-            tty_printf '%s\n' "$(t launcher_steam_found "$name")"
-            [[ -n "$exe" ]] && tty_printf '  %s\n' "$exe"
-        done <<< "$lines"
-    fi
-    tty_printf '\n'
-    if [[ "$count" -eq 0 ]]; then
+    if [[ "$state" != "present" ]]; then
         info "$(t launcher_steam_none)"
-        tty_printf 's) %s\n' "$(t launcher_steam_create_item)"
-    else
-        tty_printf 'r) %s\n' "$(t launcher_steam_recreate_item)"
-        tty_printf 'x) %s\n' "$(t launcher_steam_remove_item)"
+        return 0
     fi
-    tty_printf '0) %s\n\n' "$(t launcher_back)"
-    choice="$(prompt_reply "$(t menu_select)" "")"
-    choice="${choice%%[[:space:]]*}"
-    case "$choice" in
-        s|S)
-            if [[ "$count" -ne 0 ]]; then
-                tty_printf '%s\n' "$(t menu_invalid)"
-                return 0
-            fi
-            if prompt_confirm_keep "$(t launcher_steam_create "$version")"; then
-                create_steam_shortcut_fresh "$version" "$bs_dir" || true
-            else
-                info "$(t launcher_steam_leave)"
-            fi
-            ;;
-        r|R)
-            if [[ "$count" -eq 0 ]]; then
-                tty_printf '%s\n' "$(t menu_invalid)"
-                return 0
-            fi
-            if prompt_confirm_keep "$(t launcher_steam_recreate "$count" "$version")"; then
-                create_steam_shortcut_fresh "$version" "$bs_dir" || true
-            else
-                info "$(t launcher_steam_leave)"
-            fi
-            ;;
-        x|X)
-            if [[ "$count" -eq 0 ]]; then
-                tty_printf '%s\n' "$(t menu_invalid)"
-                return 0
-            fi
-            if prompt_confirm_keep "$(t launcher_steam_remove_ask "$version")"; then
-                result="$(steam_cdp_action remove "$wrapper" "$bs_dir" "" "")" || result="left"
-                case "$result" in
-                    removed$'\t'[1-9]*) success "$(t launcher_steam_removed)" ;;
-                    *) warn "$(t launcher_steam_left)" ;;
-                esac
-            else
-                info "$(t launcher_steam_leave)"
-            fi
-            ;;
-        0|q|Q|"")
-            info "$(t launcher_steam_leave)"
-            ;;
-        *) tty_printf '%s\n' "$(t menu_invalid)" ;;
+    if ! prompt_confirm_keep "$(t launcher_steam_remove_ask "$version")"; then
+        info "$(t launcher_steam_leave)"
+        return 0
+    fi
+    result="$(steam_cdp_action remove "$wrapper" "$bs_dir" "" "")" || result="left"
+    case "$result" in
+        removed$'\t'[1-9]*) success "$(t launcher_steam_removed)" ;;
+        *) warn "$(t launcher_steam_left)" ;;
     esac
+}
+
+manage_steam_shortcut() {
+    steam_add_or_repair "$1" "${2:-}"
 }
 
 # =============================================================================
@@ -5191,12 +5352,14 @@ cmd_setup() {
 remove_managed_launcher() {
     local slug="$1"
     local label="$2"
-    local wrapper desktop
+    local wrapper desktop bureau
     wrapper="$(launcher_wrapper_path "$slug")"
     desktop="$(launcher_desktop_path "$slug")"
+    bureau="$(launcher_bureau_path "$slug")"
     steam_shortcut_remove "$slug" || true
     [[ -e "$wrapper" ]] && safe_rm "$wrapper"
     [[ -e "$desktop" ]] && safe_rm "$desktop"
+    [[ -e "$bureau" || -L "$bureau" ]] && safe_rm "$bureau"
     if command -v update-desktop-database >/dev/null 2>&1; then
         run_cmd update-desktop-database "$APPLICATIONS_DIR" || true
     fi
@@ -5208,6 +5371,8 @@ remove_managed_launcher() {
 launcher_manage_one() {
     local slug="$1"
     local i=0 found=0 label="" dir="" choice="" orphan=0
+    local menu_state="" bureau_state="" steam_state="" steam_report="" steam_rows=""
+    local kind="" appid="" name="" exe=""
     while true; do
         refresh_managed_launchers || true
         found=0
@@ -5224,15 +5389,43 @@ launcher_manage_one() {
             fi
         done
         [[ "$found" -eq 1 ]] || return 0
-        tty_printf '\n%s\n' "$(t launcher_manage_version "$label")"
         if [[ -e "$(launcher_desktop_path "$slug")" || -L "$(launcher_desktop_path "$slug")" ]]; then
-            tty_printf '%s\n' "$(t launcher_desktop_ready "$(launcher_desktop_path "$slug")")"
+            menu_state="$(t launcher_present)"
         else
-            tty_printf '%s\n' "$(t launcher_desktop_absent "$label")"
+            menu_state="$(t launcher_absent)"
         fi
-        tty_printf '\nd) %s\n' "$(t launcher_desktop_add)"
-        tty_printf 'x) %s\n' "$(t launcher_desktop_remove)"
-        tty_printf 's) %s\n' "$(t launcher_steam_open)"
+        if [[ -e "$(launcher_bureau_path "$slug")" || -L "$(launcher_bureau_path "$slug")" ]]; then
+            bureau_state="$(t launcher_present)"
+        else
+            bureau_state="$(t launcher_absent)"
+        fi
+        steam_report="$(steam_shortcut_report "$label" "$dir")"
+        steam_state="${steam_report%%$'\n'*}"
+        steam_rows=""
+        if [[ "$steam_report" == *$'\n'* ]]; then
+            steam_rows="${steam_report#*$'\n'}"
+        fi
+        tty_printf '\n%s\n' "$(t launcher_manage_version "$label")"
+        tty_printf '  %s\n' "$(t launcher_menu_state "$menu_state")"
+        tty_printf '  %s\n' "$(t launcher_bureau_state "$bureau_state")"
+        case "$steam_state" in
+            present) tty_printf '  %s\n' "$(t launcher_steam_state "$(t launcher_present)")" ;;
+            absent) tty_printf '  %s\n' "$(t launcher_steam_state "$(t launcher_absent)")" ;;
+            *) tty_printf '  %s\n' "$(t launcher_steam_state "$(t launcher_steam_unknown)")" ;;
+        esac
+        if [[ -n "$steam_rows" ]]; then
+            while IFS=$'\t' read -r kind appid name exe; do
+                [[ "$kind" == "found" ]] || continue
+                tty_printf '    %s\n' "$(t launcher_steam_found "$name")"
+                [[ -n "$exe" ]] && tty_printf '    %s\n' "$exe"
+            done <<< "$steam_rows"
+        fi
+        tty_printf '\n1) %s\n' "$(t launcher_menu_add)"
+        tty_printf '2) %s\n' "$(t launcher_menu_remove)"
+        tty_printf '3) %s\n' "$(t launcher_bureau_add)"
+        tty_printf '4) %s\n' "$(t launcher_bureau_remove)"
+        tty_printf '5) %s\n' "$(t launcher_steam_add)"
+        tty_printf '6) %s\n' "$(t launcher_steam_remove)"
         if [[ "$orphan" -eq 1 ]]; then
             tty_printf 'c) %s\n' "$(t launcher_delete)"
         fi
@@ -5240,26 +5433,42 @@ launcher_manage_one() {
         choice="$(prompt_reply "$(t menu_select)" "")"
         choice="${choice%%[[:space:]]*}"
         case "$choice" in
-            d|D)
+            1)
                 if [[ -z "$dir" || ! -d "$dir" ]]; then
                     info "$(t launcher_manage_version "$label")$(t launcher_orphan)"
                     continue
                 fi
                 install_beat_saber_launcher "$label" "$dir" || true
                 ;;
-            x|X)
-                if ! prompt_confirm_keep "$(t launcher_desktop_remove)"; then
+            2)
+                if ! prompt_confirm_keep "$(t launcher_menu_remove)"; then
                     continue
                 fi
                 if drop_desktop_launcher "$slug"; then
-                    success "$(t launcher_desktop_removed "$(launcher_desktop_path "$slug")")"
+                    success "$(t launcher_menu_removed "$(launcher_desktop_path "$slug")")"
                 else
-                    info "$(t launcher_desktop_absent "$label")"
+                    info "$(t launcher_menu_absent "$label")"
                 fi
                 ;;
-            s|S)
-                manage_steam_shortcut "$label" "$dir" || true
+            3)
+                if [[ -z "$dir" || ! -d "$dir" ]]; then
+                    info "$(t launcher_manage_version "$label")$(t launcher_orphan)"
+                    continue
+                fi
+                install_bureau_launcher "$label" "$dir" || true
                 ;;
+            4)
+                if ! prompt_confirm_keep "$(t launcher_bureau_remove)"; then
+                    continue
+                fi
+                if drop_bureau_launcher "$slug"; then
+                    success "$(t launcher_bureau_removed "$(launcher_bureau_path "$slug")")"
+                else
+                    info "$(t launcher_bureau_absent "$label")"
+                fi
+                ;;
+            5) steam_add_or_repair "$label" "$dir" || true ;;
+            6) steam_remove_shortcut "$label" "$dir" || true ;;
             c|C)
                 if [[ "$orphan" -ne 1 ]]; then
                     tty_printf '%s\n' "$(t menu_invalid)"
@@ -5278,7 +5487,7 @@ launcher_manage_one() {
 
 menu_launchers() {
     local choice="" i=0 count=0
-    local wrap_s="" desk_s="" orphan_s=""
+    local menu_s="" bureau_s="" orphan_s=""
     tty_open || true
     while true; do
         refresh_managed_launchers || true
@@ -5288,22 +5497,22 @@ menu_launchers() {
             tty_printf '%s\n' "$(t bs_versions_none)"
         fi
         for ((i = 0; i < count; i++)); do
-            if [[ "${BSMF_LAUNCHER_HAS_WRAPPER[$i]}" -eq 1 ]]; then
-                wrap_s="$(t launcher_present)"
-            else
-                wrap_s="$(t launcher_absent)"
-            fi
             if [[ "${BSMF_LAUNCHER_HAS_DESKTOP[$i]}" -eq 1 ]]; then
-                desk_s="$(t launcher_present)"
+                menu_s="$(t launcher_present)"
             else
-                desk_s="$(t launcher_absent)"
+                menu_s="$(t launcher_absent)"
+            fi
+            if [[ "${BSMF_LAUNCHER_HAS_BUREAU[$i]}" -eq 1 ]]; then
+                bureau_s="$(t launcher_present)"
+            else
+                bureau_s="$(t launcher_absent)"
             fi
             orphan_s=""
             if [[ "${BSMF_LAUNCHER_ORPHAN[$i]}" -eq 1 ]]; then
                 orphan_s="$(t launcher_orphan)"
             fi
             tty_printf '  %d) %s\n' "$((i + 1))" \
-                "$(t launcher_line "${BSMF_LAUNCHER_LABELS[$i]}" "$wrap_s" "$desk_s" "$orphan_s")"
+                "$(t launcher_line "${BSMF_LAUNCHER_LABELS[$i]}" "$menu_s" "$bureau_s" "$orphan_s")"
             if [[ -n "${BSMF_LAUNCHER_DIRS[$i]}" ]]; then
                 tty_printf '     %s\n' "${BSMF_LAUNCHER_DIRS[$i]}"
             fi

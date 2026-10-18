@@ -93,6 +93,29 @@ if shortcut_matches_instance "Beat Saber.exe" "" "$wrap" "$instance"; then
 fi
 pass "steam shortcut matcher"
 
+menu_file="$(launcher_desktop_path "1.40.8")"
+bureau_file="$(launcher_bureau_path "1.40.8")"
+[[ "$menu_file" != "$bureau_file" ]] || fail "start menu and desktop shortcuts must be different files"
+[[ "$menu_file" == "$APPLICATIONS_DIR/beat-saber-1.40.8-modded.desktop" ]] || fail "start menu shortcut moved"
+mkdir -p "$(dirname "$bureau_file")"
+printf '[Desktop Entry]\n' >"$bureau_file"
+refresh_managed_launchers
+bureau_seen=0
+for ((i = 0; i < ${#BSMF_LAUNCHER_SLUGS[@]}; i++)); do
+    if [[ "${BSMF_LAUNCHER_SLUGS[$i]}" == "1.40.8" ]]; then
+        [[ "${BSMF_LAUNCHER_HAS_DESKTOP[$i]}" -eq 1 ]] || fail "start menu should stay present"
+        [[ "${BSMF_LAUNCHER_HAS_BUREAU[$i]}" -eq 1 ]] || fail "desktop shortcut should be present"
+        bureau_seen=1
+    fi
+done
+[[ "$bureau_seen" -eq 1 ]] || fail "version missing after desktop shortcut was created"
+drop_bureau_launcher "1.40.8"
+[[ ! -e "$bureau_file" ]] || fail "desktop shortcut still present"
+[[ -e "$menu_file" ]] || fail "desktop removal deleted the start menu shortcut"
+[[ -e "$wrap" ]] || fail "desktop removal deleted the command"
+[[ -f "$instance/Beat Saber.exe" ]] || fail "desktop removal deleted the instance"
+pass "desktop removal leaves the start menu and the instance"
+
 drop_desktop_launcher "1.40.8"
 [[ ! -e "$APPLICATIONS_DIR/beat-saber-1.40.8-modded.desktop" ]] || fail "desktop shortcut still present"
 [[ -e "$wrap" ]] || fail "desktop removal deleted the command"
