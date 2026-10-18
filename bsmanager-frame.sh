@@ -4620,6 +4620,8 @@ port, action, wrapper, instance, disp_name, exclude = sys.argv[1:7]
 exclude = str(exclude).strip()
 vdf_path = os.environ.get("BSMF_STEAM_SHORTCUTS_VDF") or ""
 artwork = os.environ.get("BSMF_STEAM_ARTWORK_PATH") or ""
+launch_opts = os.environ.get("BSMF_STEAM_LAUNCH_OPTIONS") or ""
+is_vr = os.environ.get("BSMF_STEAM_IS_VR", "0") == "1"
 
 def norm(path):
     path = (path or "").replace("\\", "/").strip().strip('"')
@@ -4794,6 +4796,9 @@ try:
     hasExe: typeof apps.SetShortcutExe === 'function',
     hasDir: typeof apps.SetShortcutStartDir === 'function',
     hasName: typeof apps.SetShortcutName === 'function',
+    hasLaunch: typeof apps.SetShortcutLaunchOptions === 'function',
+    hasCompat: typeof apps.SpecifyCompatTool === 'function',
+    hasVR: typeof apps.SetShortcutIsVR === 'function',
     hasArt: typeof apps.SetCustomArtworkForApp === 'function',
   };
 })()
@@ -4886,12 +4891,13 @@ try:
         evaluate(ws, "window.SteamClient.Apps.SetShortcutName(%s, %s)" % (app_js, json.dumps(title)))
     evaluate(ws, "window.SteamClient.Apps.SetShortcutExe(%s, %s)" % (app_js, json.dumps(wrapper)))
     evaluate(ws, "window.SteamClient.Apps.SetShortcutStartDir(%s, %s)" % (app_js, json.dumps(instance or "")))
-    evaluate(ws, """
-(() => {
-  const apps = window.SteamClient.Apps;
-  if (typeof apps.SetShortcutIsVR === 'function') apps.SetShortcutIsVR(%s, true);
-})()
-""" % app_js)
+    if detected.get("hasLaunch"):
+        evaluate(ws, "window.SteamClient.Apps.SetShortcutLaunchOptions(%s, %s)" % (app_js, json.dumps(launch_opts)))
+    if detected.get("hasCompat"):
+        # Native Linux apps (BSManager) must not inherit Proton.
+        evaluate(ws, "window.SteamClient.Apps.SpecifyCompatTool(%s, %s)" % (app_js, json.dumps("")))
+    if detected.get("hasVR"):
+        evaluate(ws, "window.SteamClient.Apps.SetShortcutIsVR(%s, %s)" % (app_js, "true" if is_vr else "false"))
 
     if artwork and os.path.isfile(artwork) and detected.get("hasArt"):
         b64 = base64.b64encode(open(artwork, "rb").read()).decode()
@@ -4934,6 +4940,7 @@ PY
 
 create_steam_shortcut_for() {
     local name="$1" wrapper="$2" start_dir="${3:-}" artwork="${4:-}"
+    local launch_opts="${5:-}" is_vr="${6:-0}"
     local result appid
     [[ -n "$wrapper" ]] || {
         warn "$(t launcher_steam_create_failed)"
@@ -4944,12 +4951,14 @@ create_steam_shortcut_for() {
     else
         unset BSMF_STEAM_ARTWORK_PATH || true
     fi
+    export BSMF_STEAM_LAUNCH_OPTIONS="$launch_opts"
+    export BSMF_STEAM_IS_VR="$is_vr"
     if ! result="$(steam_cdp_action create "$wrapper" "$start_dir" "$name" "")"; then
-        unset BSMF_STEAM_ARTWORK_PATH || true
+        unset BSMF_STEAM_ARTWORK_PATH BSMF_STEAM_LAUNCH_OPTIONS BSMF_STEAM_IS_VR || true
         warn "$(t launcher_steam_unreachable)"
         return 1
     fi
-    unset BSMF_STEAM_ARTWORK_PATH || true
+    unset BSMF_STEAM_ARTWORK_PATH BSMF_STEAM_LAUNCH_OPTIONS BSMF_STEAM_IS_VR || true
     appid="${result#created$'\t'}"
     if [[ "$result" != created$'\t'* || -z "$appid" || "$appid" == "$result" ]]; then
         warn "$(t launcher_steam_create_failed)"
@@ -4968,7 +4977,8 @@ create_steam_shortcut_fresh() {
     }
     wrapper="$(create_beat_saber_wrapper "$version" "$bs_dir")" || return 1
     icon="$(find_bsmanager_icon 2>/dev/null || true)"
-    create_steam_shortcut_for "Beat Saber ${version}" "$wrapper" "$bs_dir" "$icon"
+    # Beat Saber is launched via Proton wrapper; mark as VR for the headset library.
+    create_steam_shortcut_for "Beat Saber ${version}" "$wrapper" "$bs_dir" "$icon" "" "1"
 }
 
 steam_shortcut_report_paths() {
@@ -5069,6 +5079,7 @@ manage_steam_shortcut() {
 
 steam_add_or_repair_paths() {
     local label="$1" wrapper="$2" start_dir="${3:-}" artwork="${4:-}"
+    local launch_opts="${5:-}" is_vr="${6:-0}"
     local report="" state="" count=0 kind="" appid="" name="" exe=""
     if [[ "$FLAG_NON_INTERACTIVE" -eq 1 || "$FLAG_DRY_RUN" -eq 1 ]]; then
         info "$(t launcher_steam_leave)"
@@ -5086,14 +5097,14 @@ steam_add_or_repair_paths() {
             count=$((count + 1))
         done <<< "${report#*$'\n'}"
         if prompt_confirm_keep "$(t launcher_steam_recreate "$count" "$label")"; then
-            create_steam_shortcut_for "$label" "$wrapper" "$start_dir" "$artwork" || true
+            create_steam_shortcut_for "$label" "$wrapper" "$start_dir" "$artwork" "$launch_opts" "$is_vr" || true
         else
             info "$(t launcher_steam_leave)"
         fi
         return 0
     fi
     if prompt_confirm_keep "$(t launcher_steam_create "$label")"; then
-        create_steam_shortcut_for "$label" "$wrapper" "$start_dir" "$artwork" || true
+        create_steam_shortcut_for "$label" "$wrapper" "$start_dir" "$artwork" "$launch_opts" "$is_vr" || true
     else
         info "$(t launcher_steam_leave)"
     fi
@@ -5144,7 +5155,10 @@ manage_bsmanager_shortcuts() {
         fi
         exe_path="$(bsmanager_exe_path 2>/dev/null || true)"
         if [[ -n "$exe_path" ]]; then
-            steam_report="$(steam_shortcut_report_paths "$exe_path" "$BSMANAGER_INSTALL_DIR")"
+            steam_report="$(steam_shortcut_report_paths "$exe_path" "$(dirname "$exe_path")")"
+            if [[ "${steam_report%%$'\n'*}" == "absent" ]]; then
+                steam_report="$(steam_shortcut_report_paths "$exe_path" "$BSMANAGER_INSTALL_DIR")"
+            fi
         else
             steam_report="absent"
         fi
@@ -5206,13 +5220,16 @@ manage_bsmanager_shortcuts() {
                     continue
                 }
                 icon="$(find_bsmanager_icon 2>/dev/null || true)"
-                steam_add_or_repair_paths "BSManager" "$exe_path" "$BSMANAGER_INSTALL_DIR" "$icon" || true
+                # Native Electron: no Proton, not a VR title, needs --no-sandbox on Steam Frame.
+                steam_add_or_repair_paths "BSManager" "$exe_path" "$(dirname "$exe_path")" "$icon" "--no-sandbox" "0" || true
                 ;;
             6)
                 exe_path="$(bsmanager_exe_path)" || {
                     warn "$(t bsm_shortcuts_missing)"
                     continue
                 }
+                steam_remove_shortcut_paths "BSManager" "$exe_path" "$(dirname "$exe_path")" || true
+                # Also match older shortcuts that used the install root as StartDir.
                 steam_remove_shortcut_paths "BSManager" "$exe_path" "$BSMANAGER_INSTALL_DIR" || true
                 ;;
             0|q|Q) return 0 ;;
