@@ -327,7 +327,7 @@ _t_en() {
         bs_version_using) printf '%s' "Using Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "No Beat Saber instances found under %s" ;;
         launcher_ready) printf '%s' "Launcher ready: %s" ;;
-        launcher_hint_menu5) printf '%s' "The shortcuts command adds the desktop entry and tries to repair the Steam shortcut." ;;
+        launcher_hint_menu5) printf '%s' "The shortcuts command writes the desktop entry. An existing Steam shortcut is left unchanged unless you agree to recreate it." ;;
         launcher_title) printf '%s' "Beat Saber launchers" ;;
         launcher_add) printf '%s' "Add or repair a version" ;;
         launcher_delete) printf '%s' "Delete a launcher" ;;
@@ -343,6 +343,25 @@ _t_en() {
         launcher_steam_removed) printf '%s' "Steam shortcut removed." ;;
         launcher_steam_left) printf '%s' "Steam shortcut was left in place." ;;
         launcher_added) printf '%s' "Launcher ready for %s" ;;
+        launcher_desktop_add) printf '%s' "Add or repair the desktop shortcut" ;;
+        launcher_desktop_remove) printf '%s' "Remove the desktop shortcut" ;;
+        launcher_desktop_ready) printf '%s' "Desktop shortcut ready: %s" ;;
+        launcher_desktop_removed) printf '%s' "Desktop shortcut removed: %s" ;;
+        launcher_desktop_absent) printf '%s' "No desktop shortcut for %s" ;;
+        launcher_steam_open) printf '%s' "Steam shortcut" ;;
+        launcher_steam_create_item) printf '%s' "Create a Steam shortcut" ;;
+        launcher_steam_recreate_item) printf '%s' "Recreate the Steam shortcut" ;;
+        launcher_steam_remove_item) printf '%s' "Remove the Steam shortcut" ;;
+        launcher_steam_found) printf '%s' "Steam shortcut: %s" ;;
+        launcher_steam_none) printf '%s' "No Steam shortcut found for this version." ;;
+        launcher_steam_unreachable) printf '%s' "Steam shortcuts are not visible right now." ;;
+        launcher_steam_recreate) printf '%s' "Recreate %s Steam shortcut(s) for %s? Declining leaves them unchanged." ;;
+        launcher_steam_create) printf '%s' "Create a new Steam shortcut for %s?" ;;
+        launcher_steam_remove_ask) printf '%s' "Remove the Steam shortcut for %s? The Beat Saber instance is kept." ;;
+        launcher_steam_leave) printf '%s' "Steam shortcut left unchanged." ;;
+        launcher_steam_created) printf '%s' "New Steam shortcut created for %s" ;;
+        launcher_steam_create_failed) printf '%s' "Could not create the Steam shortcut. The existing one was left unchanged." ;;
+        launcher_manage_version) printf '%s' "Shortcuts for %s" ;;
         launcher_pick) printf '%s' "Select a launcher" ;;
         uninstall_frame_about) printf '%s' "This removes bsmanager-frame only. BSManager, launchers, instances, maps, and saves stay." ;;
         ask_remove_frame) printf '%s' "Remove bsmanager-frame?" ;;
@@ -469,7 +488,7 @@ _t_fr() {
         bs_version_using) printf '%s' "Version Beat Saber utilisée : %s" ;;
         bs_version_none_die) printf '%s' "Aucune instance Beat Saber trouvée sous %s" ;;
         launcher_ready) printf '%s' "Lanceur prêt : %s" ;;
-        launcher_hint_menu5) printf '%s' "La commande shortcuts ajoute l'entrée bureau et tente de réparer le raccourci Steam." ;;
+        launcher_hint_menu5) printf '%s' "La commande shortcuts écrit le raccourci bureau. Un raccourci Steam existant reste inchangé, sauf si vous acceptez de le recréer." ;;
         launcher_title) printf '%s' "Lanceurs Beat Saber" ;;
         launcher_add) printf '%s' "Ajouter ou réparer une version" ;;
         launcher_delete) printf '%s' "Supprimer un lanceur" ;;
@@ -485,6 +504,25 @@ _t_fr() {
         launcher_steam_removed) printf '%s' "Raccourci Steam supprimé." ;;
         launcher_steam_left) printf '%s' "Le raccourci Steam a été laissé en place." ;;
         launcher_added) printf '%s' "Lanceur prêt pour %s" ;;
+        launcher_desktop_add) printf '%s' "Ajouter ou réparer le raccourci bureau" ;;
+        launcher_desktop_remove) printf '%s' "Retirer le raccourci bureau" ;;
+        launcher_desktop_ready) printf '%s' "Raccourci bureau prêt : %s" ;;
+        launcher_desktop_removed) printf '%s' "Raccourci bureau retiré : %s" ;;
+        launcher_desktop_absent) printf '%s' "Pas de raccourci bureau pour %s" ;;
+        launcher_steam_open) printf '%s' "Raccourci Steam" ;;
+        launcher_steam_create_item) printf '%s' "Créer un raccourci Steam" ;;
+        launcher_steam_recreate_item) printf '%s' "Recréer le raccourci Steam" ;;
+        launcher_steam_remove_item) printf '%s' "Retirer le raccourci Steam" ;;
+        launcher_steam_found) printf '%s' "Raccourci Steam : %s" ;;
+        launcher_steam_none) printf '%s' "Aucun raccourci Steam trouvé pour cette version." ;;
+        launcher_steam_unreachable) printf '%s' "Les raccourcis Steam ne sont pas visibles pour le moment." ;;
+        launcher_steam_recreate) printf '%s' "Recréer %s raccourci(s) Steam pour %s ? Refuser les laisse inchangés." ;;
+        launcher_steam_create) printf '%s' "Créer un nouveau raccourci Steam pour %s ?" ;;
+        launcher_steam_remove_ask) printf '%s' "Retirer le raccourci Steam pour %s ? L'instance Beat Saber est conservée." ;;
+        launcher_steam_leave) printf '%s' "Raccourci Steam laissé inchangé." ;;
+        launcher_steam_created) printf '%s' "Nouveau raccourci Steam créé pour %s" ;;
+        launcher_steam_create_failed) printf '%s' "Impossible de créer le raccourci Steam. L'existant a été laissé inchangé." ;;
+        launcher_manage_version) printf '%s' "Raccourcis pour %s" ;;
         launcher_pick) printf '%s' "Choisir un lanceur" ;;
         uninstall_frame_about) printf '%s' "Ceci retire seulement bsmanager-frame. BSManager, les lanceurs, les instances, les maps et les sauvegardes restent." ;;
         ask_remove_frame) printf '%s' "Retirer bsmanager-frame ?" ;;
@@ -611,7 +649,7 @@ _t_es() {
         bs_version_using) printf '%s' "Usando Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "No hay instancias de Beat Saber en %s" ;;
         launcher_ready) printf '%s' "Lanzador listo: %s" ;;
-        launcher_hint_menu5) printf '%s' "El comando shortcuts crea el acceso de escritorio e intenta reparar el acceso de Steam." ;;
+        launcher_hint_menu5) printf '%s' "El comando shortcuts escribe el acceso de escritorio. Un acceso de Steam existente queda igual, salvo si aceptas recrearlo." ;;
         launcher_title) printf '%s' "Lanzadores de Beat Saber" ;;
         launcher_add) printf '%s' "Añadir o reparar una versión" ;;
         launcher_delete) printf '%s' "Eliminar un lanzador" ;;
@@ -627,6 +665,25 @@ _t_es() {
         launcher_steam_removed) printf '%s' "Acceso de Steam eliminado." ;;
         launcher_steam_left) printf '%s' "El acceso de Steam se dejó en su sitio." ;;
         launcher_added) printf '%s' "Lanzador listo para %s" ;;
+        launcher_desktop_add) printf '%s' "Añadir o reparar el acceso de escritorio" ;;
+        launcher_desktop_remove) printf '%s' "Quitar el acceso de escritorio" ;;
+        launcher_desktop_ready) printf '%s' "Acceso de escritorio listo: %s" ;;
+        launcher_desktop_removed) printf '%s' "Acceso de escritorio quitado: %s" ;;
+        launcher_desktop_absent) printf '%s' "No hay acceso de escritorio para %s" ;;
+        launcher_steam_open) printf '%s' "Acceso de Steam" ;;
+        launcher_steam_create_item) printf '%s' "Crear un acceso de Steam" ;;
+        launcher_steam_recreate_item) printf '%s' "Recrear el acceso de Steam" ;;
+        launcher_steam_remove_item) printf '%s' "Quitar el acceso de Steam" ;;
+        launcher_steam_found) printf '%s' "Acceso de Steam: %s" ;;
+        launcher_steam_none) printf '%s' "No hay un acceso de Steam para esta versión." ;;
+        launcher_steam_unreachable) printf '%s' "Los accesos de Steam no están visibles ahora." ;;
+        launcher_steam_recreate) printf '%s' "¿Recrear %s acceso(s) de Steam para %s? Rechazar los deja igual." ;;
+        launcher_steam_create) printf '%s' "¿Crear un acceso de Steam nuevo para %s?" ;;
+        launcher_steam_remove_ask) printf '%s' "¿Quitar el acceso de Steam de %s? La instancia de Beat Saber se conserva." ;;
+        launcher_steam_leave) printf '%s' "Acceso de Steam dejado igual." ;;
+        launcher_steam_created) printf '%s' "Nuevo acceso de Steam creado para %s" ;;
+        launcher_steam_create_failed) printf '%s' "No se pudo crear el acceso de Steam. El existente quedó igual." ;;
+        launcher_manage_version) printf '%s' "Accesos para %s" ;;
         launcher_pick) printf '%s' "Elegir un lanzador" ;;
         uninstall_frame_about) printf '%s' "Esto solo retira bsmanager-frame. BSManager, los lanzadores, las instancias, los mapas y las partidas permanecen." ;;
         ask_remove_frame) printf '%s' "¿Retirar bsmanager-frame?" ;;
@@ -753,7 +810,7 @@ _t_de() {
         bs_version_using) printf '%s' "Verwende Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "Keine Beat-Saber-Instanzen unter %s gefunden" ;;
         launcher_ready) printf '%s' "Starter bereit: %s" ;;
-        launcher_hint_menu5) printf '%s' "Der Befehl shortcuts legt den Desktop-Eintrag an und versucht die Steam-Verknüpfung zu reparieren." ;;
+        launcher_hint_menu5) printf '%s' "Der Befehl shortcuts schreibt die Desktop-Verknüpfung. Eine bestehende Steam-Verknüpfung bleibt, außer Sie stimmen einer Neuerstellung zu." ;;
         launcher_title) printf '%s' "Beat-Saber-Starter" ;;
         launcher_add) printf '%s' "Version hinzufügen oder reparieren" ;;
         launcher_delete) printf '%s' "Starter löschen" ;;
@@ -769,6 +826,25 @@ _t_de() {
         launcher_steam_removed) printf '%s' "Steam-Verknüpfung entfernt." ;;
         launcher_steam_left) printf '%s' "Die Steam-Verknüpfung blieb bestehen." ;;
         launcher_added) printf '%s' "Starter bereit für %s" ;;
+        launcher_desktop_add) printf '%s' "Desktop-Verknüpfung hinzufügen oder reparieren" ;;
+        launcher_desktop_remove) printf '%s' "Desktop-Verknüpfung entfernen" ;;
+        launcher_desktop_ready) printf '%s' "Desktop-Verknüpfung bereit: %s" ;;
+        launcher_desktop_removed) printf '%s' "Desktop-Verknüpfung entfernt: %s" ;;
+        launcher_desktop_absent) printf '%s' "Keine Desktop-Verknüpfung für %s" ;;
+        launcher_steam_open) printf '%s' "Steam-Verknüpfung" ;;
+        launcher_steam_create_item) printf '%s' "Steam-Verknüpfung erstellen" ;;
+        launcher_steam_recreate_item) printf '%s' "Steam-Verknüpfung neu erstellen" ;;
+        launcher_steam_remove_item) printf '%s' "Steam-Verknüpfung entfernen" ;;
+        launcher_steam_found) printf '%s' "Steam-Verknüpfung: %s" ;;
+        launcher_steam_none) printf '%s' "Keine Steam-Verknüpfung für diese Version gefunden." ;;
+        launcher_steam_unreachable) printf '%s' "Steam-Verknüpfungen sind gerade nicht sichtbar." ;;
+        launcher_steam_recreate) printf '%s' "%s Steam-Verknüpfung(en) für %s neu erstellen? Ablehnen lässt sie unverändert." ;;
+        launcher_steam_create) printf '%s' "Neue Steam-Verknüpfung für %s erstellen?" ;;
+        launcher_steam_remove_ask) printf '%s' "Steam-Verknüpfung für %s entfernen? Die Beat-Saber-Instanz bleibt." ;;
+        launcher_steam_leave) printf '%s' "Steam-Verknüpfung unverändert gelassen." ;;
+        launcher_steam_created) printf '%s' "Neue Steam-Verknüpfung erstellt für %s" ;;
+        launcher_steam_create_failed) printf '%s' "Steam-Verknüpfung konnte nicht erstellt werden. Die bestehende blieb unverändert." ;;
+        launcher_manage_version) printf '%s' "Verknüpfungen für %s" ;;
         launcher_pick) printf '%s' "Starter auswählen" ;;
         uninstall_frame_about) printf '%s' "Dies entfernt nur bsmanager-frame. BSManager, Starter, Instanzen, Maps und Spielstände bleiben." ;;
         ask_remove_frame) printf '%s' "bsmanager-frame entfernen?" ;;
@@ -895,7 +971,7 @@ _t_sw() {
         bs_version_using) printf '%s' "Inatumia Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "Hakuna matukio ya Beat Saber chini ya %s" ;;
         launcher_ready) printf '%s' "Kizinduzi kiko tayari: %s" ;;
-        launcher_hint_menu5) printf '%s' "Amri ya shortcuts huongeza ingizo la desktop na kujaribu kurekebisha njia ya mkato ya Steam." ;;
+        launcher_hint_menu5) printf '%s' "Amri ya shortcuts huandika njia ya desktop. Njia ya Steam iliyopo hubaki, isipokuwa ukubali kuunda upya." ;;
         launcher_title) printf '%s' "Vizinduzi vya Beat Saber" ;;
         launcher_add) printf '%s' "Ongeza au rekebisha toleo" ;;
         launcher_delete) printf '%s' "Futa kizinduzi" ;;
@@ -911,6 +987,25 @@ _t_sw() {
         launcher_steam_removed) printf '%s' "Njia ya mkato ya Steam imeondolewa." ;;
         launcher_steam_left) printf '%s' "Njia ya mkato ya Steam imeachwa." ;;
         launcher_added) printf '%s' "Kizinduzi kiko tayari kwa %s" ;;
+        launcher_desktop_add) printf '%s' "Ongeza au rekebisha njia ya mkato ya desktop" ;;
+        launcher_desktop_remove) printf '%s' "Ondoa njia ya mkato ya desktop" ;;
+        launcher_desktop_ready) printf '%s' "Njia ya mkato ya desktop iko tayari: %s" ;;
+        launcher_desktop_removed) printf '%s' "Njia ya mkato ya desktop imeondolewa: %s" ;;
+        launcher_desktop_absent) printf '%s' "Hakuna njia ya mkato ya desktop kwa %s" ;;
+        launcher_steam_open) printf '%s' "Njia ya mkato ya Steam" ;;
+        launcher_steam_create_item) printf '%s' "Unda njia ya mkato ya Steam" ;;
+        launcher_steam_recreate_item) printf '%s' "Unda upya njia ya mkato ya Steam" ;;
+        launcher_steam_remove_item) printf '%s' "Ondoa njia ya mkato ya Steam" ;;
+        launcher_steam_found) printf '%s' "Njia ya mkato ya Steam: %s" ;;
+        launcher_steam_none) printf '%s' "Hakuna njia ya mkato ya Steam kwa toleo hili." ;;
+        launcher_steam_unreachable) printf '%s' "Njia za mkato za Steam hazionekani kwa sasa." ;;
+        launcher_steam_recreate) printf '%s' "Unda upya njia %s za Steam kwa %s? Kukataa kuziacha kama zilivyo." ;;
+        launcher_steam_create) printf '%s' "Unda njia mpya ya Steam kwa %s?" ;;
+        launcher_steam_remove_ask) printf '%s' "Ondoa njia ya Steam ya %s? Toleo la Beat Saber linabaki." ;;
+        launcher_steam_leave) printf '%s' "Njia ya Steam imeachwa kama ilivyo." ;;
+        launcher_steam_created) printf '%s' "Njia mpya ya Steam imeundwa kwa %s" ;;
+        launcher_steam_create_failed) printf '%s' "Njia ya Steam haikuundwa. Iliyokuwepo imeachwa kama ilivyo." ;;
+        launcher_manage_version) printf '%s' "Njia za mkato za %s" ;;
         launcher_pick) printf '%s' "Chagua kizinduzi" ;;
         uninstall_frame_about) printf '%s' "Hii huondoa bsmanager-frame pekee. BSManager, vizinduzi, matoleo, ramani na hifadhi zinabaki." ;;
         ask_remove_frame) printf '%s' "Ondoa bsmanager-frame?" ;;
@@ -3533,6 +3628,51 @@ launcher_desktop_path() {
     printf '%s\n' "$APPLICATIONS_DIR/beat-saber-$(sanitize_version_slug "$1")-modded.desktop"
 }
 
+_norm_shortcut_path() {
+    local p="${1:-}"
+    p="${p//\\//}"
+    p="${p#\"}"
+    p="${p%\"}"
+    while [[ "$p" == */ ]]; do
+        p="${p%/}"
+    done
+    printf '%s' "${p,,}"
+}
+
+_path_has() {
+    local hay="$1" needle="$2" padded="" token=""
+    [[ -n "$hay" && -n "$needle" ]] || return 1
+    padded="/${hay#/}"
+    padded="${padded%/}/"
+    token="/${needle#/}/"
+    [[ "$padded" == *"$token"* ]]
+}
+
+# A Steam shortcut belongs to this instance when its exe or start directory
+# contains the instance path, the BSInstances/<version> tail, or this helper's wrapper.
+# The match stops at a path boundary, so 1.40.8 does not claim 1.40.80.
+# A bare name such as "Beat Saber" is not enough: another version may use it.
+shortcut_matches_instance() {
+    local exe="$1" start="$2" wrapper="$3" instance="$4"
+    local exe_n start_n wrap_n inst_n tail
+    exe_n="$(_norm_shortcut_path "$exe")"
+    start_n="$(_norm_shortcut_path "$start")"
+    wrap_n="$(_norm_shortcut_path "$wrapper")"
+    inst_n="$(_norm_shortcut_path "$instance")"
+    _path_has "$exe_n" "$wrap_n" && return 0
+    _path_has "$exe_n" "$inst_n" && return 0
+    _path_has "$start_n" "$inst_n" && return 0
+    if [[ -n "$inst_n" && "$inst_n" == */* ]]; then
+        tail="${inst_n%/*}"
+        tail="${tail##*/}/${inst_n##*/}"
+        if [[ ${#tail} -gt 3 ]]; then
+            _path_has "$exe_n" "$tail" && return 0
+            _path_has "$start_n" "$tail" && return 0
+        fi
+    fi
+    return 1
+}
+
 _launcher_record() {
     local slug="$1" label="$2" dir="$3" orphan="$4"
     local wrapper desktop has_wrapper=0 has_desktop=0 i
@@ -3799,16 +3939,23 @@ install_beat_saber_launcher() {
         "$(desktop_escape_exec "$wrapper")" \
         "$icon" \
         "Steam Frame modded Beat Saber launcher"
-    success "Desktop entry: beat-saber-${slug}-modded.desktop"
     if command -v update-desktop-database >/dev/null 2>&1; then
         run_cmd update-desktop-database "$APPLICATIONS_DIR" || true
     fi
-    if steam_shortcuts_cdp "$version" "$bs_dir"; then
-        :
-    else
-        warn "$(t launcher_steam_left)"
+    success "$(t launcher_desktop_ready "beat-saber-${slug}-modded.desktop")"
+}
+
+drop_desktop_launcher() {
+    local slug="$1"
+    local desktop
+    desktop="$(launcher_desktop_path "$slug")"
+    if [[ ! -e "$desktop" && ! -L "$desktop" ]]; then
+        return 1
     fi
-    success "$(t launcher_added "$version")"
+    safe_rm "$desktop"
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        run_cmd update-desktop-database "$APPLICATIONS_DIR" || true
+    fi
 }
 
 # =============================================================================
@@ -4004,7 +4151,7 @@ try:
         exe = str(sc.get("exe") or sc.get("Exes") or sc.get("ShortcutPath") or "")
         name = str(sc.get("appname") or sc.get("AppName") or sc.get("name") or "")
         appid = sc.get("appid") or sc.get("AppID") or sc.get("appId")
-        if wrapper in exe or "Beat Saber" in name:
+        if wrapper and wrapper in exe:
             target_app_id = appid
             break
 
@@ -4166,6 +4313,356 @@ PY
     case "$status" in
         *removed*) success "$(t launcher_steam_removed)" ;;
         *) warn "$(t launcher_steam_left)" ;;
+    esac
+}
+
+# list | create | remove. Never edits shortcuts.vdf.
+# list prints "found<TAB>appid<TAB>name<TAB>exe" for shortcuts that point at this
+# instance or at this helper's wrapper. A display name alone is not a match.
+# create makes a new shortcut, checks that it points at the wrapper, and only
+# then prints "created<TAB>appid". remove drops matches except an excluded appid.
+steam_cdp_action() {
+    local action="$1" wrapper="$2" instance="${3:-}" name="${4:-}" exclude="${5:-}"
+    local port venv
+    if ! port="$(detect_steam_cdp_port)"; then
+        return 1
+    fi
+    venv="$(ensure_cdp_venv)" || return 1
+    if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
+        info "[dry-run] CDP ${action} Steam shortcut"
+        return 2
+    fi
+    "$venv/bin/python" - "$port" "$action" "$wrapper" "$instance" "$name" "$exclude" <<'PY'
+import json, sys, urllib.request
+
+try:
+    import websocket
+except ImportError:
+    print("websocket-client missing in venv", file=sys.stderr)
+    sys.exit(2)
+
+port, action, wrapper, instance, disp_name, exclude = sys.argv[1:7]
+exclude = str(exclude).strip()
+
+def norm(path):
+    path = (path or "").replace("\\", "/").strip().strip('"')
+    while len(path) > 1 and path.endswith("/"):
+        path = path[:-1]
+    return path.lower()
+
+def has_path(hay, needle):
+    hay, needle = norm(hay).strip("/"), norm(needle).strip("/")
+    if not hay or not needle:
+        return False
+    return ("/" + needle + "/") in ("/" + hay + "/")
+
+def matches(exe, start):
+    wrap_n, inst_n = norm(wrapper), norm(instance)
+    if has_path(exe, wrap_n):
+        return True
+    if has_path(exe, inst_n) or has_path(start, inst_n):
+        return True
+    if inst_n and "/" in inst_n:
+        parent, leaf = inst_n.rsplit("/", 1)
+        tail = parent.rsplit("/", 1)[-1] + "/" + leaf
+        if len(tail) > 3 and (has_path(exe, tail) or has_path(start, tail)):
+            return True
+    return False
+
+def get(url):
+    with urllib.request.urlopen(url, timeout=5) as resp:
+        return json.load(resp)
+
+def field(row, *keys):
+    if not isinstance(row, dict):
+        return ""
+    lower = {str(k).lower(): v for k, v in row.items()}
+    for key in keys:
+        value = lower.get(key.lower())
+        if value not in (None, ""):
+            return value
+    return ""
+
+def flatten(value):
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, dict)]
+    if not isinstance(value, dict):
+        return []
+    if any(str(k).lower() in ("exe", "appname", "appid", "startdir", "shortcutpath") for k in value):
+        return [value]
+    rows = []
+    nested = value.get("shortcuts") or value.get("all_shortcuts")
+    if isinstance(nested, list):
+        return flatten(nested)
+    for key, item in value.items():
+        if isinstance(item, dict):
+            row = dict(item)
+            if field(row, "appid", "appId", "AppID") in ("", None):
+                row["appid"] = key
+            rows.append(row)
+        elif isinstance(item, list):
+            rows.extend(flatten(item))
+    return rows
+
+msg_id = 0
+
+def rpc(ws, method, params=None):
+    global msg_id
+    msg_id += 1
+    payload = {"id": msg_id, "method": method}
+    if params is not None:
+        payload["params"] = params
+    ws.send(json.dumps(payload))
+    while True:
+        data = json.loads(ws.recv())
+        if data.get("id") == msg_id:
+            return data
+
+def evaluate(ws, expression):
+    res = rpc(ws, "Runtime.evaluate", {
+        "expression": expression,
+        "returnByValue": True,
+        "awaitPromise": True,
+    })
+    return ((res.get("result") or {}).get("result") or {}).get("value")
+
+targets = get(f"http://127.0.0.1:{port}/json/list")
+shared = None
+for target in targets:
+    title = (target.get("title") or "") + " " + (target.get("url") or "")
+    if "SharedJSContext" in title or target.get("title") == "SharedJSContext":
+        shared = target
+        break
+if shared is None:
+    for target in targets:
+        if target.get("type") == "page" and target.get("webSocketDebuggerUrl"):
+            shared = target
+            break
+if shared is None or not shared.get("webSocketDebuggerUrl"):
+    print("SharedJSContext target not found", file=sys.stderr)
+    sys.exit(3)
+
+ws = websocket.create_connection(shared["webSocketDebuggerUrl"], timeout=10)
+try:
+    detected = evaluate(ws, """
+(() => {
+  const apps = (window.SteamClient && window.SteamClient.Apps) ? window.SteamClient.Apps : null;
+  if (!apps) return {ok:false};
+  return {
+    ok: true,
+    hasGet: typeof apps.GetShortcuts === 'function' || typeof apps.GetAllShortcuts === 'function',
+    hasAdd: typeof apps.AddShortcut === 'function',
+    hasRemove: typeof apps.RemoveShortcut === 'function',
+    hasExe: typeof apps.SetShortcutExe === 'function',
+    hasDir: typeof apps.SetShortcutStartDir === 'function',
+    hasName: typeof apps.SetShortcutName === 'function',
+  };
+})()
+""")
+    if not isinstance(detected, dict) or not detected.get("ok") or not detected.get("hasGet"):
+        print("SteamClient.Apps unavailable", file=sys.stderr)
+        sys.exit(4)
+
+    def load_rows():
+        value = evaluate(ws, """
+(() => {
+  const apps = window.SteamClient.Apps;
+  if (typeof apps.GetShortcuts === 'function') return apps.GetShortcuts();
+  if (typeof apps.GetAllShortcuts === 'function') return apps.GetAllShortcuts();
+  return [];
+})()
+""")
+        return flatten(value)
+
+    def describe(row):
+        return (
+            str(field(row, "appid", "appId", "AppID", "unAppID")).strip(),
+            str(field(row, "exe", "Exe", "ShortcutPath", "ShortcutExe")),
+            str(field(row, "StartDir", "startdir", "startDir")),
+            str(field(row, "appname", "AppName", "name", "strAppName", "strShortcutName") or "Beat Saber"),
+        )
+
+    rows = load_rows()
+    if action == "list":
+        for row in rows:
+            appid, exe, start, label = describe(row)
+            if appid and matches(exe, start):
+                print("found\t%s\t%s\t%s" % (
+                    appid,
+                    label.replace("\t", " ").replace("\n", " "),
+                    exe.replace("\t", " ").replace("\n", " "),
+                ))
+        sys.exit(0)
+
+    if action == "remove":
+        if not detected.get("hasRemove"):
+            print("left")
+            sys.exit(0)
+        removed = 0
+        for row in rows:
+            appid, exe, start, _label = describe(row)
+            if not appid or appid == str(exclude) or not matches(exe, start):
+                continue
+            evaluate(ws, "window.SteamClient.Apps.RemoveShortcut(%s)" % json.dumps(appid if not appid.isdigit() else int(appid)))
+            removed += 1
+        print("removed\t%s" % removed if removed else "left")
+        sys.exit(0)
+
+    if action != "create":
+        print("failed", file=sys.stderr)
+        sys.exit(5)
+    if not (detected.get("hasAdd") and detected.get("hasExe") and detected.get("hasDir")):
+        print("failed")
+        sys.exit(0)
+
+    created = evaluate(ws, """
+(async () => {
+  const apps = window.SteamClient.Apps;
+  try {
+    const created = await apps.AddShortcut(%s, %s, %s, "");
+    return {ok: true, created};
+  } catch (err) {
+    return {ok: false, error: String(err)};
+  }
+})()
+""" % (json.dumps(wrapper), json.dumps(disp_name or "Beat Saber"), json.dumps(instance)))
+    payload = created if isinstance(created, dict) else {"ok": True, "created": created}
+    if not payload.get("ok"):
+        print("failed")
+        sys.exit(0)
+    raw = payload.get("created")
+    if isinstance(raw, str):
+        raw = raw.strip()
+    appid = ""
+    if isinstance(raw, int) or (isinstance(raw, str) and raw.isdigit()):
+        appid = str(raw).strip()
+    elif isinstance(raw, dict):
+        appid = str(field(raw, "appid", "appId", "AppID", "unAppID")).strip()
+    if not appid:
+        print("failed")
+        sys.exit(0)
+
+    app_js = json.dumps(int(appid) if appid.isdigit() else appid)
+    evaluate(ws, "window.SteamClient.Apps.SetShortcutExe(%s, %s)" % (app_js, json.dumps(wrapper)))
+    evaluate(ws, "window.SteamClient.Apps.SetShortcutStartDir(%s, %s)" % (app_js, json.dumps(instance)))
+    if detected.get("hasName"):
+        evaluate(ws, "window.SteamClient.Apps.SetShortcutName(%s, %s)" % (app_js, json.dumps(disp_name or "Beat Saber")))
+
+    verified = False
+    for row in load_rows():
+        found_id, exe, _start, _label = describe(row)
+        if found_id == appid and has_path(exe, wrapper):
+            verified = True
+            break
+    if not verified:
+        if detected.get("hasRemove"):
+            evaluate(ws, "window.SteamClient.Apps.RemoveShortcut(%s)" % app_js)
+        print("failed")
+        sys.exit(0)
+    print("created\t%s" % appid)
+finally:
+    ws.close()
+PY
+}
+
+create_steam_shortcut_fresh() {
+    local version="$1" bs_dir="$2"
+    local slug wrapper name result appid
+    slug="$(sanitize_version_slug "$version")"
+    [[ -n "$bs_dir" && -d "$bs_dir" ]] || {
+        warn "$(t launcher_steam_create_failed)"
+        return 1
+    }
+    wrapper="$(create_beat_saber_wrapper "$version" "$bs_dir")" || return 1
+    name="Beat Saber ${version}"
+    if ! result="$(steam_cdp_action create "$wrapper" "$bs_dir" "$name" "")"; then
+        warn "$(t launcher_steam_unreachable)"
+        return 1
+    fi
+    appid="${result#created$'\t'}"
+    if [[ "$result" != created$'\t'* || -z "$appid" || "$appid" == "$result" ]]; then
+        warn "$(t launcher_steam_create_failed)"
+        return 1
+    fi
+    steam_cdp_action remove "$wrapper" "$bs_dir" "" "$appid" >/dev/null || true
+    success "$(t launcher_steam_created "$version")"
+}
+
+manage_steam_shortcut() {
+    local version="$1" bs_dir="$2"
+    local slug wrapper lines choice="" count=0 result=""
+    local kind="" appid="" name="" exe=""
+    slug="$(sanitize_version_slug "$version")"
+    wrapper="$(launcher_wrapper_path "$slug")"
+    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 || "$FLAG_DRY_RUN" -eq 1 ]]; then
+        info "$(t launcher_steam_leave)"
+        return 0
+    fi
+    if ! lines="$(steam_cdp_action list "$wrapper" "$bs_dir" "" "")"; then
+        warn "$(t launcher_steam_unreachable)"
+        return 0
+    fi
+    if [[ -n "$lines" ]]; then
+        while IFS=$'\t' read -r kind appid name exe; do
+            [[ "$kind" == "found" ]] || continue
+            count=$((count + 1))
+            tty_printf '%s\n' "$(t launcher_steam_found "$name")"
+            [[ -n "$exe" ]] && tty_printf '  %s\n' "$exe"
+        done <<< "$lines"
+    fi
+    tty_printf '\n'
+    if [[ "$count" -eq 0 ]]; then
+        info "$(t launcher_steam_none)"
+        tty_printf 's) %s\n' "$(t launcher_steam_create_item)"
+    else
+        tty_printf 'r) %s\n' "$(t launcher_steam_recreate_item)"
+        tty_printf 'x) %s\n' "$(t launcher_steam_remove_item)"
+    fi
+    tty_printf '0) %s\n\n' "$(t launcher_back)"
+    choice="$(prompt_reply "$(t menu_select)" "")"
+    choice="${choice%%[[:space:]]*}"
+    case "$choice" in
+        s|S)
+            if [[ "$count" -ne 0 ]]; then
+                tty_printf '%s\n' "$(t menu_invalid)"
+                return 0
+            fi
+            if prompt_confirm_keep "$(t launcher_steam_create "$version")"; then
+                create_steam_shortcut_fresh "$version" "$bs_dir" || true
+            else
+                info "$(t launcher_steam_leave)"
+            fi
+            ;;
+        r|R)
+            if [[ "$count" -eq 0 ]]; then
+                tty_printf '%s\n' "$(t menu_invalid)"
+                return 0
+            fi
+            if prompt_confirm_keep "$(t launcher_steam_recreate "$count" "$version")"; then
+                create_steam_shortcut_fresh "$version" "$bs_dir" || true
+            else
+                info "$(t launcher_steam_leave)"
+            fi
+            ;;
+        x|X)
+            if [[ "$count" -eq 0 ]]; then
+                tty_printf '%s\n' "$(t menu_invalid)"
+                return 0
+            fi
+            if prompt_confirm_keep "$(t launcher_steam_remove_ask "$version")"; then
+                result="$(steam_cdp_action remove "$wrapper" "$bs_dir" "" "")" || result="left"
+                case "$result" in
+                    removed$'\t'[1-9]*) success "$(t launcher_steam_removed)" ;;
+                    *) warn "$(t launcher_steam_left)" ;;
+                esac
+            else
+                info "$(t launcher_steam_leave)"
+            fi
+            ;;
+        0|q|Q|"")
+            info "$(t launcher_steam_leave)"
+            ;;
+        *) tty_printf '%s\n' "$(t menu_invalid)" ;;
     esac
 }
 
@@ -4624,11 +5121,7 @@ cmd_shortcuts() {
     assert_platform_or_force
     select_beat_saber_version || return 1
     create_desktop_shortcuts "$BSMF_SELECTED_BS_NAME" "$BSMF_SELECTED_BS_DIR" || return 1
-    if steam_shortcuts_cdp "$BSMF_SELECTED_BS_NAME" "$BSMF_SELECTED_BS_DIR"; then
-        success "Steam shortcut operation finished"
-    else
-        warn "Steam shortcut repair incomplete — see messages above"
-    fi
+    manage_steam_shortcut "$BSMF_SELECTED_BS_NAME" "$BSMF_SELECTED_BS_DIR" || true
 }
 
 cmd_install() {
@@ -4712,8 +5205,79 @@ remove_managed_launcher() {
     log_action OK "launcher_removed slug=$slug"
 }
 
+launcher_manage_one() {
+    local slug="$1"
+    local i=0 found=0 label="" dir="" choice="" orphan=0
+    while true; do
+        refresh_managed_launchers || true
+        found=0
+        label=""
+        dir=""
+        orphan=0
+        for ((i = 0; i < ${#BSMF_LAUNCHER_SLUGS[@]}; i++)); do
+            if [[ "${BSMF_LAUNCHER_SLUGS[$i]}" == "$slug" ]]; then
+                found=1
+                label="${BSMF_LAUNCHER_LABELS[$i]}"
+                dir="${BSMF_LAUNCHER_DIRS[$i]}"
+                orphan="${BSMF_LAUNCHER_ORPHAN[$i]}"
+                break
+            fi
+        done
+        [[ "$found" -eq 1 ]] || return 0
+        tty_printf '\n%s\n' "$(t launcher_manage_version "$label")"
+        if [[ -e "$(launcher_desktop_path "$slug")" || -L "$(launcher_desktop_path "$slug")" ]]; then
+            tty_printf '%s\n' "$(t launcher_desktop_ready "$(launcher_desktop_path "$slug")")"
+        else
+            tty_printf '%s\n' "$(t launcher_desktop_absent "$label")"
+        fi
+        tty_printf '\nd) %s\n' "$(t launcher_desktop_add)"
+        tty_printf 'x) %s\n' "$(t launcher_desktop_remove)"
+        tty_printf 's) %s\n' "$(t launcher_steam_open)"
+        if [[ "$orphan" -eq 1 ]]; then
+            tty_printf 'c) %s\n' "$(t launcher_delete)"
+        fi
+        tty_printf '0) %s\n\n' "$(t launcher_back)"
+        choice="$(prompt_reply "$(t menu_select)" "")"
+        choice="${choice%%[[:space:]]*}"
+        case "$choice" in
+            d|D)
+                if [[ -z "$dir" || ! -d "$dir" ]]; then
+                    info "$(t launcher_manage_version "$label")$(t launcher_orphan)"
+                    continue
+                fi
+                install_beat_saber_launcher "$label" "$dir" || true
+                ;;
+            x|X)
+                if ! prompt_confirm_keep "$(t launcher_desktop_remove)"; then
+                    continue
+                fi
+                if drop_desktop_launcher "$slug"; then
+                    success "$(t launcher_desktop_removed "$(launcher_desktop_path "$slug")")"
+                else
+                    info "$(t launcher_desktop_absent "$label")"
+                fi
+                ;;
+            s|S)
+                manage_steam_shortcut "$label" "$dir" || true
+                ;;
+            c|C)
+                if [[ "$orphan" -ne 1 ]]; then
+                    tty_printf '%s\n' "$(t menu_invalid)"
+                    continue
+                fi
+                if prompt_confirm_keep "$(t launcher_confirm_delete "$label")"; then
+                    remove_managed_launcher "$slug" "$label" || true
+                    return 0
+                fi
+                ;;
+            0|q|Q) return 0 ;;
+            *) tty_printf '%s\n' "$(t menu_invalid)" ;;
+        esac
+    done
+}
+
 menu_launchers() {
-    local choice="" i=0 count=0 answer=""
+    local choice="" i=0 count=0
     local wrap_s="" desk_s="" orphan_s=""
     tty_open || true
     while true; do
@@ -4744,39 +5308,17 @@ menu_launchers() {
                 tty_printf '     %s\n' "${BSMF_LAUNCHER_DIRS[$i]}"
             fi
         done
-        tty_printf '\na) %s\n' "$(t launcher_add)"
-        tty_printf 'd) %s\n' "$(t launcher_delete)"
-        tty_printf '0) %s\n\n' "$(t launcher_back)"
-        choice="$(prompt_reply "$(t menu_select)" "")"
+        tty_printf '\n0) %s\n\n' "$(t launcher_back)"
+        choice="$(prompt_reply "$(t launcher_pick)" "")"
         choice="${choice%%[[:space:]]*}"
-        case "$choice" in
-            a|A)
-                if select_beat_saber_version; then
-                    install_beat_saber_launcher "$BSMF_SELECTED_BS_NAME" "$BSMF_SELECTED_BS_DIR" || true
-                fi
-                ;;
-            d|D)
-                if [[ "$count" -eq 0 ]]; then
-                    info "$(t launcher_none_delete)"
-                    continue
-                fi
-                answer="$(prompt_reply "$(t launcher_pick)" "")"
-                if [[ ! "$answer" =~ ^[0-9]+$ ]] || ((answer < 1 || answer > count)); then
-                    tty_printf '%s\n' "$(t menu_invalid)"
-                    continue
-                fi
-                i=$((answer - 1))
-                if [[ "${BSMF_LAUNCHER_HAS_WRAPPER[$i]}" -eq 0 && "${BSMF_LAUNCHER_HAS_DESKTOP[$i]}" -eq 0 ]]; then
-                    info "$(t launcher_none_delete)"
-                    continue
-                fi
-                if prompt_confirm "$(t launcher_confirm_delete "${BSMF_LAUNCHER_LABELS[$i]}")"; then
-                    remove_managed_launcher "${BSMF_LAUNCHER_SLUGS[$i]}" "${BSMF_LAUNCHER_LABELS[$i]}" || true
-                fi
-                ;;
-            0|q|Q) return 0 ;;
-            *) tty_printf '%s\n' "$(t menu_invalid)" ;;
-        esac
+        if [[ "$choice" == "0" || "$choice" == "q" || "$choice" == "Q" ]]; then
+            return 0
+        fi
+        if [[ ! "$choice" =~ ^[0-9]+$ ]] || ((choice < 1 || choice > count)); then
+            tty_printf '%s\n' "$(t menu_invalid)"
+            continue
+        fi
+        launcher_manage_one "${BSMF_LAUNCHER_SLUGS[$((choice - 1))]}" || true
     done
 }
 
@@ -4865,7 +5407,7 @@ Commands:
   update           Update BSManager from the latest valid steam-frame-* release
   setup            Alias for install
   proton           Ensure Proton stack and configure BSManager paths
-  shortcuts        Add or repair the Beat Saber launcher, desktop entry, and Steam shortcut
+  shortcuts        Write the desktop launcher. Steam shortcuts are recreated only after confirmation
   diagnose         Print diagnostics report
   backup           Backup small integration/config files
   self-update      Update this tool from GitHub

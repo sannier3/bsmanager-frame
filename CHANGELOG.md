@@ -32,9 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Official `Zagrios/bs-manager` native release lookup is no longer the normal
   Steam Frame install/update path, and it is not a silent fallback.
-- The launcher menu lists installed versions and leftover launchers. Adding a
-  version rewrites its command, desktop entry, and Steam shortcut. Removing a
-  launcher leaves the Beat Saber instance, maps, and saves in place.
+- The launcher menu lists installed versions and leftover launchers. Desktop and
+  Steam shortcuts are added, removed, or recreated separately. An existing Steam
+  shortcut, including one named Beat Saber.exe that already points at the
+  instance, is left unchanged unless you agree to recreate it. Removing a
+  shortcut leaves the Beat Saber instance, maps, and saves in place.
 - Uninstall is split: `bsmanager-frame` removes only the helper. BSManager
   removal asks before deleting `~/.config/bs-manager`. Enter keeps those
   settings. Instances, maps, saves, Proton, and Steam tools are not offered.

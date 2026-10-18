@@ -74,4 +74,32 @@ cmd_uninstall_bsmanager
 [[ -f "$XDG_DATA_HOME/BSManager/BSInstances/1.40.8/Beat Saber.exe" ]] || fail "instance deleted with BSManager"
 pass "uninstall BSManager keeps settings and instances"
 
+wrap="$LOCAL_BIN/beat-saber-1.40.8-modded"
+shortcut_matches_instance "$instance/Beat Saber.exe" "$instance" "$wrap" "$instance" \
+    || fail "instance exe should match"
+shortcut_matches_instance "\"$instance/Beat Saber.exe\"" "" "$wrap" "$instance" \
+    || fail "quoted instance exe should match"
+shortcut_matches_instance "${instance//\//\\}\\Beat Saber.exe" "" "$wrap" "$instance" \
+    || fail "windows-style instance exe should match"
+shortcut_matches_instance "$wrap" "$instance" "$wrap" "$instance" \
+    || fail "wrapper exe should match"
+shortcut_matches_instance "/other/BSInstances/1.40.8/Beat Saber.exe" "" "$wrap" "$instance" \
+    || fail "version tail should match"
+if shortcut_matches_instance "/other/BSInstances/1.40.80/Beat Saber.exe" "" "$wrap" "$instance"; then
+    fail "1.40.80 must not match 1.40.8"
+fi
+if shortcut_matches_instance "Beat Saber.exe" "" "$wrap" "$instance"; then
+    fail "a bare Beat Saber.exe name must not match"
+fi
+pass "steam shortcut matcher"
+
+drop_desktop_launcher "1.40.8"
+[[ ! -e "$APPLICATIONS_DIR/beat-saber-1.40.8-modded.desktop" ]] || fail "desktop shortcut still present"
+[[ -e "$wrap" ]] || fail "desktop removal deleted the command"
+[[ -f "$instance/Beat Saber.exe" ]] || fail "desktop removal deleted the instance"
+if drop_desktop_launcher "1.40.8"; then
+    fail "removing a missing desktop shortcut should report absence"
+fi
+pass "desktop removal leaves the command and the instance"
+
 printf 'ALL_OK\n'
