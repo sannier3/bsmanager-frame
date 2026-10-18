@@ -125,4 +125,20 @@ if drop_desktop_launcher "1.40.8"; then
 fi
 pass "desktop removal leaves the command and the instance"
 
+mkdir -p "$BSMANAGER_INSTALL_DIR" "$(dirname "$(bsmanager_bureau_path)")"
+printf '#!/bin/sh\n' >"$BSMANAGER_INSTALL_DIR/bs-manager"
+chmod +x "$BSMANAGER_INSTALL_DIR/bs-manager"
+ln -sfn "$BSMANAGER_INSTALL_DIR/bs-manager" "$BSMANAGER_BIN"
+install_bsmanager_menu
+[[ -f "$(bsmanager_menu_path)" ]] || fail "BSManager start menu shortcut missing"
+install_bsmanager_bureau
+[[ -f "$(bsmanager_bureau_path)" ]] || fail "BSManager desktop shortcut missing"
+drop_bsmanager_bureau
+[[ ! -e "$(bsmanager_bureau_path)" ]] || fail "BSManager desktop shortcut still present"
+[[ -f "$(bsmanager_menu_path)" ]] || fail "BSManager start menu was removed with the desktop one"
+drop_bsmanager_menu
+[[ ! -e "$(bsmanager_menu_path)" ]] || fail "BSManager start menu shortcut still present"
+[[ -x "$BSMANAGER_INSTALL_DIR/bs-manager" ]] || fail "BSManager binary removed with shortcuts"
+pass "BSManager menu and desktop shortcuts"
+
 printf 'ALL_OK\n'

@@ -38,7 +38,7 @@ Steam Frame, Steam, SteamOS, Beat Saber, and related marks belong to their respe
 - Optional Flatpak path, experimental and not validated (`--allow-flatpak` only)
 - Configure Proton paths, creating `config.json` when BSManager has not launched yet
 - Create launch wrappers for modded Beat Saber instances
-- Create, repair, or remove the Beat Saber start-menu shortcut, desktop shortcut, and Steam shortcut separately. Each one shows whether it already exists. An existing Steam shortcut is left unchanged unless you choose to recreate it
+- Create, repair, or remove shortcuts for BSManager and each Beat Saber version: start menu (also used by the SteamVR desktop-app launcher), desktop, and Steam library jacket. An existing Steam shortcut is left unchanged unless you choose to recreate it
 - Uninstall bsmanager-frame and BSManager separately. BSManager settings are optional; instances, maps, and saves stay
 - Diagnostics report suitable for GitHub issues
 - Configuration backups
