@@ -141,4 +141,17 @@ drop_bsmanager_menu
 [[ -x "$BSMANAGER_INSTALL_DIR/bs-manager" ]] || fail "BSManager binary removed with shortcuts"
 pass "BSManager menu and desktop shortcuts"
 
+# Nested layout (archive extracted as .../bs-manager/bs-manager/<elf>)
+rm -f "$BSMANAGER_BIN" "$BSMANAGER_INSTALL_DIR/bs-manager"
+mkdir -p "$BSMANAGER_INSTALL_DIR/bs-manager"
+printf '#!/bin/sh\n' >"$BSMANAGER_INSTALL_DIR/bs-manager/bs-manager"
+chmod +x "$BSMANAGER_INSTALL_DIR/bs-manager/bs-manager"
+nested="$(bsmanager_exe_path)" || fail "nested BSManager binary not resolved"
+[[ "$nested" == "$BSMANAGER_INSTALL_DIR/bs-manager/bs-manager" ]] || fail "wrong nested path: $nested"
+# A directory must never be treated as the executable (Steam opens the explorer).
+if [[ -d "$BSMANAGER_INSTALL_DIR/bs-manager" && "$nested" == "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
+    fail "directory was accepted as BSManager executable"
+fi
+pass "nested BSManager binary is resolved"
+
 printf 'ALL_OK\n'

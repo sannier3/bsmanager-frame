@@ -2448,8 +2448,10 @@ ensure_user_dirs() {
 }
 
 is_bsmanager_native_installed() {
-    [[ -x "$BSMANAGER_INSTALL_DIR/bs-manager" ]] || return 1
-    is_arm64_elf "$BSMANAGER_INSTALL_DIR/bs-manager"
+    local exe=""
+    exe="$(bsmanager_exe_path 2>/dev/null || true)"
+    [[ -n "$exe" ]] || return 1
+    is_arm64_elf "$exe"
 }
 
 is_bsmanager_flatpak_user_installed() {
@@ -2737,11 +2739,20 @@ install_native_bsmanager_from_dir() {
     rm -rf "$old" 2>/dev/null || true
 
     mkdir -p "$LOCAL_BIN"
-    ln -sfn "$BSMANAGER_INSTALL_DIR/bs-manager" "$BSMANAGER_BIN"
-    chmod +x "$BSMANAGER_INSTALL_DIR/bs-manager" || true
+    local installed_bin=""
+    installed_bin="$(bsmanager_exe_path 2>/dev/null || true)"
+    if [[ -z "$installed_bin" && -f "$BSMANAGER_INSTALL_DIR/bs-manager/bs-manager" ]]; then
+        installed_bin="$BSMANAGER_INSTALL_DIR/bs-manager/bs-manager"
+    fi
+    if [[ -z "$installed_bin" && -f "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
+        installed_bin="$BSMANAGER_INSTALL_DIR/bs-manager"
+    fi
+    [[ -n "$installed_bin" ]] || die "BSManager binary missing after install"
+    chmod +x "$installed_bin" || true
+    ln -sfn "$installed_bin" "$BSMANAGER_BIN"
     mkdir -p "$BSMANAGER_DATA_DIR"
     prune_backups "$TOOL_DATA_DIR/backups/bsmanager" "$BACKUP_KEEP_COUNT"
-    success "BSManager native ARM64: installed ($BSMANAGER_INSTALL_DIR)"
+    success "BSManager native ARM64: installed ($installed_bin)"
 }
 
 fetch_bsmanager_frame_releases_json() {
@@ -3757,19 +3768,31 @@ bsmanager_bureau_path() {
     printf '%s\n' "$(user_desktop_dir)/bs-manager.desktop"
 }
 
+# Resolve the native BSManager ELF. A directory named bs-manager is not enough:
+# Steam opens folders as the file explorer when the shortcut Exe points at one.
 bsmanager_exe_path() {
-    if [[ -x "$BSMANAGER_BIN" ]]; then
+    local -a candidates=()
+    local c resolved=""
+    candidates=(
+        "$BSMANAGER_INSTALL_DIR/bs-manager/bs-manager"
+        "$BSMANAGER_INSTALL_DIR/bs-manager"
+    )
+    if [[ -L "$BSMANAGER_BIN" || -e "$BSMANAGER_BIN" ]]; then
         if command -v realpath >/dev/null 2>&1; then
-            realpath -m "$BSMANAGER_BIN" 2>/dev/null || printf '%s\n' "$BSMANAGER_BIN"
+            resolved="$(realpath -m "$BSMANAGER_BIN" 2>/dev/null || true)"
         else
-            printf '%s\n' "$BSMANAGER_BIN"
+            resolved="$BSMANAGER_BIN"
         fi
-        return 0
+        [[ -n "$resolved" ]] && candidates+=("$resolved" "$resolved/bs-manager")
     fi
-    if [[ -x "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
-        printf '%s\n' "$BSMANAGER_INSTALL_DIR/bs-manager"
+    for c in "${candidates[@]}"; do
+        [[ -n "$c" && -f "$c" && -x "$c" ]] || continue
+        if command -v file >/dev/null 2>&1; then
+            file -b "$c" 2>/dev/null | grep -qiE 'ELF|executable' || continue
+        fi
+        printf '%s\n' "$c"
         return 0
-    fi
+    done
     return 1
 }
 
@@ -4059,15 +4082,14 @@ write_desktop_entry() {
 create_desktop_shortcuts() {
     local version="${1:-}"
     local bs_dir="${2:-}"
-    local icon="" exec_bs wrapper slug
+    local icon="" exe_bs="" wrapper slug
     icon="$(find_bsmanager_icon 2>/dev/null || true)"
 
-    if [[ -x "$BSMANAGER_BIN" || -x "$BSMANAGER_INSTALL_DIR/bs-manager" ]]; then
-        exec_bs="$(desktop_escape_exec "$BSMANAGER_BIN") %U"
+    if exe_bs="$(bsmanager_exe_path 2>/dev/null)"; then
         write_desktop_entry \
             "$APPLICATIONS_DIR/bs-manager.desktop" \
             "BSManager" \
-            "$exec_bs" \
+            "$(desktop_escape_exec "$exe_bs") %U" \
             "$icon" \
             "Manage Beat Saber versions and mods"
         success "Desktop entry: bs-manager.desktop"
