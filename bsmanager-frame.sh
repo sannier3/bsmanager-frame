@@ -92,6 +92,12 @@ BSMF_BS_NAMES=()
 BSMF_BS_PATHS=()
 BSMF_SELECTED_BS_NAME=""
 BSMF_SELECTED_BS_DIR=""
+BSMF_LAUNCHER_SLUGS=()
+BSMF_LAUNCHER_LABELS=()
+BSMF_LAUNCHER_DIRS=()
+BSMF_LAUNCHER_HAS_WRAPPER=()
+BSMF_LAUNCHER_HAS_DESKTOP=()
+BSMF_LAUNCHER_ORPHAN=()
 
 # =============================================================================
 # Logging
@@ -303,6 +309,8 @@ _t_en() {
         menu_3) printf '%s' "Configure Proton" ;;
         menu_4) printf '%s' "Manage Beat Saber launchers" ;;
         menu_5) printf '%s' "Create / repair shortcuts" ;;
+        menu_uninstall_frame) printf '%s' "Uninstall bsmanager-frame" ;;
+        menu_uninstall_bsmanager) printf '%s' "Uninstall BSManager" ;;
         menu_6) printf '%s' "Diagnose" ;;
         menu_7) printf '%s' "Backup configuration" ;;
         menu_8) printf '%s' "Update bsmanager-frame" ;;
@@ -319,7 +327,34 @@ _t_en() {
         bs_version_using) printf '%s' "Using Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "No Beat Saber instances found under %s" ;;
         launcher_ready) printf '%s' "Launcher ready: %s" ;;
-        launcher_hint_menu5) printf '%s' "Menu 5 also adds the desktop entry and tries to repair the Steam shortcut." ;;
+        launcher_hint_menu5) printf '%s' "The shortcuts command adds the desktop entry and tries to repair the Steam shortcut." ;;
+        launcher_title) printf '%s' "Beat Saber launchers" ;;
+        launcher_add) printf '%s' "Add or repair a version" ;;
+        launcher_delete) printf '%s' "Delete a launcher" ;;
+        launcher_back) printf '%s' "Back" ;;
+        launcher_line) printf '%s' "%s — command %s, desktop %s%s" ;;
+        launcher_present) printf '%s' "present" ;;
+        launcher_absent) printf '%s' "absent" ;;
+        launcher_orphan) printf '%s' ", folder missing" ;;
+        launcher_none_delete) printf '%s' "There is no launcher to delete." ;;
+        launcher_confirm_delete) printf '%s' "Delete the launcher for %s? The Beat Saber instance, maps, and saves are kept." ;;
+        launcher_deleted) printf '%s' "Launcher removed: %s" ;;
+        launcher_instance_kept) printf '%s' "Beat Saber files were kept." ;;
+        launcher_steam_removed) printf '%s' "Steam shortcut removed." ;;
+        launcher_steam_left) printf '%s' "Steam shortcut was left in place." ;;
+        launcher_added) printf '%s' "Launcher ready for %s" ;;
+        launcher_pick) printf '%s' "Select a launcher" ;;
+        uninstall_frame_about) printf '%s' "This removes bsmanager-frame only. BSManager, launchers, instances, maps, and saves stay." ;;
+        ask_remove_frame) printf '%s' "Remove bsmanager-frame?" ;;
+        uninstall_bsm_about) printf '%s' "This removes the BSManager application. Instances, maps, and saves stay." ;;
+        uninstall_bsm_missing) printf '%s' "BSManager is not installed." ;;
+        ask_remove_bsm_app) printf '%s' "Remove the BSManager application?" ;;
+        ask_remove_bsm_config) printf '%s' "Delete BSManager settings (%s)? Instances, maps, and saves are not included." ;;
+        bsm_config_kept) printf '%s' "BSManager settings kept." ;;
+        bsm_config_removed) printf '%s' "BSManager settings removed." ;;
+        bsm_app_removed) printf '%s' "BSManager application removed." ;;
+        bsm_flatpak_left) printf '%s' "Flatpak BSManager is still installed." ;;
+        bsm_running_uninstall) printf '%s' "BSManager is running. Close it before uninstalling it." ;;
         compat_missing) printf '%s' "No Proton prefix (compatdata folder with pfx/) under %s" ;;
         confirm_yn) printf '%s' "%s [y/N]" ;;
         prompt_no_tty) printf '%s' "No /dev/tty available for interactive prompt. Re-run with --non-interactive and required options, or from a terminal." ;;
@@ -416,6 +451,8 @@ _t_fr() {
         menu_3) printf '%s' "Configurer Proton" ;;
         menu_4) printf '%s' "Gérer les lanceurs Beat Saber" ;;
         menu_5) printf '%s' "Créer / réparer les raccourcis" ;;
+        menu_uninstall_frame) printf '%s' "Désinstaller bsmanager-frame" ;;
+        menu_uninstall_bsmanager) printf '%s' "Désinstaller BSManager" ;;
         menu_6) printf '%s' "Diagnostiquer" ;;
         menu_7) printf '%s' "Sauvegarder la configuration" ;;
         menu_8) printf '%s' "Mettre à jour bsmanager-frame" ;;
@@ -432,7 +469,34 @@ _t_fr() {
         bs_version_using) printf '%s' "Version Beat Saber utilisée : %s" ;;
         bs_version_none_die) printf '%s' "Aucune instance Beat Saber trouvée sous %s" ;;
         launcher_ready) printf '%s' "Lanceur prêt : %s" ;;
-        launcher_hint_menu5) printf '%s' "Le menu 5 ajoute aussi l'entrée bureau et tente de réparer le raccourci Steam." ;;
+        launcher_hint_menu5) printf '%s' "La commande shortcuts ajoute l'entrée bureau et tente de réparer le raccourci Steam." ;;
+        launcher_title) printf '%s' "Lanceurs Beat Saber" ;;
+        launcher_add) printf '%s' "Ajouter ou réparer une version" ;;
+        launcher_delete) printf '%s' "Supprimer un lanceur" ;;
+        launcher_back) printf '%s' "Retour" ;;
+        launcher_line) printf '%s' "%s — commande %s, bureau %s%s" ;;
+        launcher_present) printf '%s' "présent" ;;
+        launcher_absent) printf '%s' "absent" ;;
+        launcher_orphan) printf '%s' ", dossier manquant" ;;
+        launcher_none_delete) printf '%s' "Aucun lanceur à supprimer." ;;
+        launcher_confirm_delete) printf '%s' "Supprimer le lanceur pour %s ? L'instance Beat Saber, les maps et les sauvegardes sont conservées." ;;
+        launcher_deleted) printf '%s' "Lanceur supprimé : %s" ;;
+        launcher_instance_kept) printf '%s' "Les fichiers Beat Saber ont été conservés." ;;
+        launcher_steam_removed) printf '%s' "Raccourci Steam supprimé." ;;
+        launcher_steam_left) printf '%s' "Le raccourci Steam a été laissé en place." ;;
+        launcher_added) printf '%s' "Lanceur prêt pour %s" ;;
+        launcher_pick) printf '%s' "Choisir un lanceur" ;;
+        uninstall_frame_about) printf '%s' "Ceci retire seulement bsmanager-frame. BSManager, les lanceurs, les instances, les maps et les sauvegardes restent." ;;
+        ask_remove_frame) printf '%s' "Retirer bsmanager-frame ?" ;;
+        uninstall_bsm_about) printf '%s' "Ceci retire l'application BSManager. Les instances, les maps et les sauvegardes restent." ;;
+        uninstall_bsm_missing) printf '%s' "BSManager n'est pas installé." ;;
+        ask_remove_bsm_app) printf '%s' "Retirer l'application BSManager ?" ;;
+        ask_remove_bsm_config) printf '%s' "Supprimer les réglages BSManager (%s) ? Les instances, les maps et les sauvegardes ne sont pas concernées." ;;
+        bsm_config_kept) printf '%s' "Réglages BSManager conservés." ;;
+        bsm_config_removed) printf '%s' "Réglages BSManager supprimés." ;;
+        bsm_app_removed) printf '%s' "Application BSManager retirée." ;;
+        bsm_flatpak_left) printf '%s' "Le Flatpak BSManager est encore installé." ;;
+        bsm_running_uninstall) printf '%s' "BSManager est en cours d'exécution. Fermez-le avant de le désinstaller." ;;
         compat_missing) printf '%s' "Aucun préfixe Proton (dossier compatdata avec pfx/) sous %s" ;;
         confirm_yn) printf '%s' "%s [o/N]" ;;
         prompt_no_tty) printf '%s' "Pas de /dev/tty pour les invites. Relancez avec --non-interactive et les options requises, ou depuis un terminal." ;;
@@ -529,6 +593,8 @@ _t_es() {
         menu_3) printf '%s' "Configurar Proton" ;;
         menu_4) printf '%s' "Gestionar lanzadores de Beat Saber" ;;
         menu_5) printf '%s' "Crear / reparar accesos directos" ;;
+        menu_uninstall_frame) printf '%s' "Desinstalar bsmanager-frame" ;;
+        menu_uninstall_bsmanager) printf '%s' "Desinstalar BSManager" ;;
         menu_6) printf '%s' "Diagnosticar" ;;
         menu_7) printf '%s' "Copia de seguridad de la configuración" ;;
         menu_8) printf '%s' "Actualizar bsmanager-frame" ;;
@@ -545,7 +611,34 @@ _t_es() {
         bs_version_using) printf '%s' "Usando Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "No hay instancias de Beat Saber en %s" ;;
         launcher_ready) printf '%s' "Lanzador listo: %s" ;;
-        launcher_hint_menu5) printf '%s' "El menú 5 también crea el acceso de escritorio e intenta reparar el acceso de Steam." ;;
+        launcher_hint_menu5) printf '%s' "El comando shortcuts crea el acceso de escritorio e intenta reparar el acceso de Steam." ;;
+        launcher_title) printf '%s' "Lanzadores de Beat Saber" ;;
+        launcher_add) printf '%s' "Añadir o reparar una versión" ;;
+        launcher_delete) printf '%s' "Eliminar un lanzador" ;;
+        launcher_back) printf '%s' "Volver" ;;
+        launcher_line) printf '%s' "%s — comando %s, escritorio %s%s" ;;
+        launcher_present) printf '%s' "presente" ;;
+        launcher_absent) printf '%s' "ausente" ;;
+        launcher_orphan) printf '%s' ", carpeta ausente" ;;
+        launcher_none_delete) printf '%s' "No hay un lanzador que eliminar." ;;
+        launcher_confirm_delete) printf '%s' "¿Eliminar el lanzador de %s? La instancia de Beat Saber, los mapas y las partidas se conservan." ;;
+        launcher_deleted) printf '%s' "Lanzador eliminado: %s" ;;
+        launcher_instance_kept) printf '%s' "Los archivos de Beat Saber se conservaron." ;;
+        launcher_steam_removed) printf '%s' "Acceso de Steam eliminado." ;;
+        launcher_steam_left) printf '%s' "El acceso de Steam se dejó en su sitio." ;;
+        launcher_added) printf '%s' "Lanzador listo para %s" ;;
+        launcher_pick) printf '%s' "Elegir un lanzador" ;;
+        uninstall_frame_about) printf '%s' "Esto solo retira bsmanager-frame. BSManager, los lanzadores, las instancias, los mapas y las partidas permanecen." ;;
+        ask_remove_frame) printf '%s' "¿Retirar bsmanager-frame?" ;;
+        uninstall_bsm_about) printf '%s' "Esto retira la aplicación BSManager. Las instancias, los mapas y las partidas permanecen." ;;
+        uninstall_bsm_missing) printf '%s' "BSManager no está instalado." ;;
+        ask_remove_bsm_app) printf '%s' "¿Retirar la aplicación BSManager?" ;;
+        ask_remove_bsm_config) printf '%s' "¿Eliminar los ajustes de BSManager (%s)? Las instancias, los mapas y las partidas no entran." ;;
+        bsm_config_kept) printf '%s' "Ajustes de BSManager conservados." ;;
+        bsm_config_removed) printf '%s' "Ajustes de BSManager eliminados." ;;
+        bsm_app_removed) printf '%s' "Aplicación BSManager retirada." ;;
+        bsm_flatpak_left) printf '%s' "El Flatpak de BSManager sigue instalado." ;;
+        bsm_running_uninstall) printf '%s' "BSManager está en ejecución. Ciérrelo antes de desinstalarlo." ;;
         compat_missing) printf '%s' "No hay prefijo Proton (carpeta compatdata con pfx/) en %s" ;;
         confirm_yn) printf '%s' "%s [s/N]" ;;
         prompt_no_tty) printf '%s' "No hay /dev/tty para prompts. Use --non-interactive y las opciones necesarias, o un terminal." ;;
@@ -642,6 +735,8 @@ _t_de() {
         menu_3) printf '%s' "Proton konfigurieren" ;;
         menu_4) printf '%s' "Beat-Saber-Starter verwalten" ;;
         menu_5) printf '%s' "Verknüpfungen erstellen / reparieren" ;;
+        menu_uninstall_frame) printf '%s' "bsmanager-frame deinstallieren" ;;
+        menu_uninstall_bsmanager) printf '%s' "BSManager deinstallieren" ;;
         menu_6) printf '%s' "Diagnose" ;;
         menu_7) printf '%s' "Konfiguration sichern" ;;
         menu_8) printf '%s' "bsmanager-frame aktualisieren" ;;
@@ -658,7 +753,34 @@ _t_de() {
         bs_version_using) printf '%s' "Verwende Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "Keine Beat-Saber-Instanzen unter %s gefunden" ;;
         launcher_ready) printf '%s' "Starter bereit: %s" ;;
-        launcher_hint_menu5) printf '%s' "Menü 5 legt auch den Desktop-Eintrag an und versucht die Steam-Verknüpfung zu reparieren." ;;
+        launcher_hint_menu5) printf '%s' "Der Befehl shortcuts legt den Desktop-Eintrag an und versucht die Steam-Verknüpfung zu reparieren." ;;
+        launcher_title) printf '%s' "Beat-Saber-Starter" ;;
+        launcher_add) printf '%s' "Version hinzufügen oder reparieren" ;;
+        launcher_delete) printf '%s' "Starter löschen" ;;
+        launcher_back) printf '%s' "Zurück" ;;
+        launcher_line) printf '%s' "%s — Befehl %s, Desktop %s%s" ;;
+        launcher_present) printf '%s' "vorhanden" ;;
+        launcher_absent) printf '%s' "fehlt" ;;
+        launcher_orphan) printf '%s' ", Ordner fehlt" ;;
+        launcher_none_delete) printf '%s' "Kein Starter zum Löschen." ;;
+        launcher_confirm_delete) printf '%s' "Starter für %s löschen? Beat-Saber-Instanz, Maps und Spielstände bleiben." ;;
+        launcher_deleted) printf '%s' "Starter entfernt: %s" ;;
+        launcher_instance_kept) printf '%s' "Beat-Saber-Dateien wurden behalten." ;;
+        launcher_steam_removed) printf '%s' "Steam-Verknüpfung entfernt." ;;
+        launcher_steam_left) printf '%s' "Die Steam-Verknüpfung blieb bestehen." ;;
+        launcher_added) printf '%s' "Starter bereit für %s" ;;
+        launcher_pick) printf '%s' "Starter auswählen" ;;
+        uninstall_frame_about) printf '%s' "Dies entfernt nur bsmanager-frame. BSManager, Starter, Instanzen, Maps und Spielstände bleiben." ;;
+        ask_remove_frame) printf '%s' "bsmanager-frame entfernen?" ;;
+        uninstall_bsm_about) printf '%s' "Dies entfernt die BSManager-Anwendung. Instanzen, Maps und Spielstände bleiben." ;;
+        uninstall_bsm_missing) printf '%s' "BSManager ist nicht installiert." ;;
+        ask_remove_bsm_app) printf '%s' "BSManager-Anwendung entfernen?" ;;
+        ask_remove_bsm_config) printf '%s' "BSManager-Einstellungen löschen (%s)? Instanzen, Maps und Spielstände sind nicht enthalten." ;;
+        bsm_config_kept) printf '%s' "BSManager-Einstellungen behalten." ;;
+        bsm_config_removed) printf '%s' "BSManager-Einstellungen entfernt." ;;
+        bsm_app_removed) printf '%s' "BSManager-Anwendung entfernt." ;;
+        bsm_flatpak_left) printf '%s' "Flatpak-BSManager ist weiterhin installiert." ;;
+        bsm_running_uninstall) printf '%s' "BSManager läuft. Schließen Sie es vor der Deinstallation." ;;
         compat_missing) printf '%s' "Kein Proton-Präfix (compatdata-Ordner mit pfx/) unter %s" ;;
         confirm_yn) printf '%s' "%s [j/N]" ;;
         prompt_no_tty) printf '%s' "Kein /dev/tty für Eingaben. Mit --non-interactive und Optionen oder im Terminal erneut ausführen." ;;
@@ -755,6 +877,8 @@ _t_sw() {
         menu_3) printf '%s' "Sanidi Proton" ;;
         menu_4) printf '%s' "Simamia vizinduzi vya Beat Saber" ;;
         menu_5) printf '%s' "Unda / rekebisha njia za mkato" ;;
+        menu_uninstall_frame) printf '%s' "Ondoa bsmanager-frame" ;;
+        menu_uninstall_bsmanager) printf '%s' "Ondoa BSManager" ;;
         menu_6) printf '%s' "Chunguza (diagnose)" ;;
         menu_7) printf '%s' "Hifadhi nakala ya usanidi" ;;
         menu_8) printf '%s' "Sasisha bsmanager-frame" ;;
@@ -771,7 +895,34 @@ _t_sw() {
         bs_version_using) printf '%s' "Inatumia Beat Saber %s" ;;
         bs_version_none_die) printf '%s' "Hakuna matukio ya Beat Saber chini ya %s" ;;
         launcher_ready) printf '%s' "Kizinduzi kiko tayari: %s" ;;
-        launcher_hint_menu5) printf '%s' "Menyu 5 pia huongeza ingizo la desktop na kujaribu kurekebisha njia ya mkato ya Steam." ;;
+        launcher_hint_menu5) printf '%s' "Amri ya shortcuts huongeza ingizo la desktop na kujaribu kurekebisha njia ya mkato ya Steam." ;;
+        launcher_title) printf '%s' "Vizinduzi vya Beat Saber" ;;
+        launcher_add) printf '%s' "Ongeza au rekebisha toleo" ;;
+        launcher_delete) printf '%s' "Futa kizinduzi" ;;
+        launcher_back) printf '%s' "Rudi" ;;
+        launcher_line) printf '%s' "%s — amri %s, desktop %s%s" ;;
+        launcher_present) printf '%s' "ipo" ;;
+        launcher_absent) printf '%s' "haipo" ;;
+        launcher_orphan) printf '%s' ", folda haipo" ;;
+        launcher_none_delete) printf '%s' "Hakuna kizinduzi cha kufuta." ;;
+        launcher_confirm_delete) printf '%s' "Futa kizinduzi cha %s? Toleo la Beat Saber, ramani na hifadhi zinabaki." ;;
+        launcher_deleted) printf '%s' "Kizinduzi kimeondolewa: %s" ;;
+        launcher_instance_kept) printf '%s' "Faili za Beat Saber zimehifadhiwa." ;;
+        launcher_steam_removed) printf '%s' "Njia ya mkato ya Steam imeondolewa." ;;
+        launcher_steam_left) printf '%s' "Njia ya mkato ya Steam imeachwa." ;;
+        launcher_added) printf '%s' "Kizinduzi kiko tayari kwa %s" ;;
+        launcher_pick) printf '%s' "Chagua kizinduzi" ;;
+        uninstall_frame_about) printf '%s' "Hii huondoa bsmanager-frame pekee. BSManager, vizinduzi, matoleo, ramani na hifadhi zinabaki." ;;
+        ask_remove_frame) printf '%s' "Ondoa bsmanager-frame?" ;;
+        uninstall_bsm_about) printf '%s' "Hii huondoa programu ya BSManager. Matoleo, ramani na hifadhi zinabaki." ;;
+        uninstall_bsm_missing) printf '%s' "BSManager haijasakinishwa." ;;
+        ask_remove_bsm_app) printf '%s' "Ondoa programu ya BSManager?" ;;
+        ask_remove_bsm_config) printf '%s' "Futa mipangilio ya BSManager (%s)? Matoleo, ramani na hifadhi hazihusiki." ;;
+        bsm_config_kept) printf '%s' "Mipangilio ya BSManager imehifadhiwa." ;;
+        bsm_config_removed) printf '%s' "Mipangilio ya BSManager imeondolewa." ;;
+        bsm_app_removed) printf '%s' "Programu ya BSManager imeondolewa." ;;
+        bsm_flatpak_left) printf '%s' "Flatpak ya BSManager bado imesakinishwa." ;;
+        bsm_running_uninstall) printf '%s' "BSManager inaendesha. Ifunge kabla ya kuiondoa." ;;
         compat_missing) printf '%s' "Hakuna kiambishi awali cha Proton (folda compatdata yenye pfx/) chini ya %s" ;;
         confirm_yn) printf '%s' "%s [d/H]" ;;
         prompt_no_tty) printf '%s' "Hakuna /dev/tty. Tumia --non-interactive na chaguo zinazohitajika, au terminal." ;;
@@ -1071,6 +1222,7 @@ is_safe_remove_path() {
         "$BSMANAGER_INSTALL_DIR"|"$BSMANAGER_INSTALL_DIR"/*) return 0 ;;
         "$LOCAL_BIN"/bsmanager-frame|"$LOCAL_BIN"/bs-manager|"$LOCAL_BIN"/beat-saber-*) return 0 ;;
         "$APPLICATIONS_DIR"/bs-manager.desktop|"$APPLICATIONS_DIR"/bsmanager-frame.desktop|"$APPLICATIONS_DIR"/beat-saber-*-modded.desktop) return 0 ;;
+        "$BSMANAGER_CONFIG_DIR"|"$BSMANAGER_CONFIG_DIR"/*) return 0 ;;
         "$TOOL_TMP_DIR"|"$TOOL_TMP_DIR"/*) return 0 ;;
         "$TOOL_DATA_DIR"/backups|"$TOOL_DATA_DIR"/backups/*) return 0 ;;
         *) return 1 ;;
@@ -1202,6 +1354,20 @@ prompt_confirm() {
     fi
 
     answer="$(prompt_reply "$(t confirm_yn "$prompt")" "$default")"
+    case "${answer,,}" in
+        y|yes|o|oui|s|si|sí|j|ja|d|ndiyo) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Destructive data question. Enter keeps the data. --yes does not answer it.
+prompt_confirm_keep() {
+    local prompt="$1"
+    local answer=""
+    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 ]]; then
+        return 1
+    fi
+    answer="$(prompt_reply "$(t confirm_yn "$prompt")" "n")"
     case "${answer,,}" in
         y|yes|o|oui|s|si|sí|j|ja|d|ndiyo) return 0 ;;
         *) return 1 ;;
@@ -3356,6 +3522,74 @@ sanitize_version_slug() {
     printf '%s\n' "$v"
 }
 
+launcher_wrapper_path() {
+    printf '%s\n' "$LOCAL_BIN/beat-saber-$(sanitize_version_slug "$1")-modded"
+}
+
+launcher_desktop_path() {
+    printf '%s\n' "$APPLICATIONS_DIR/beat-saber-$(sanitize_version_slug "$1")-modded.desktop"
+}
+
+_launcher_record() {
+    local slug="$1" label="$2" dir="$3" orphan="$4"
+    local wrapper desktop has_wrapper=0 has_desktop=0 i
+    wrapper="$(launcher_wrapper_path "$slug")"
+    desktop="$(launcher_desktop_path "$slug")"
+    [[ -e "$wrapper" ]] && has_wrapper=1
+    [[ -e "$desktop" ]] && has_desktop=1
+    for ((i = 0; i < ${#BSMF_LAUNCHER_SLUGS[@]}; i++)); do
+        if [[ "${BSMF_LAUNCHER_SLUGS[$i]}" == "$slug" ]]; then
+            return 0
+        fi
+    done
+    BSMF_LAUNCHER_SLUGS+=("$slug")
+    BSMF_LAUNCHER_LABELS+=("$label")
+    BSMF_LAUNCHER_DIRS+=("$dir")
+    BSMF_LAUNCHER_HAS_WRAPPER+=("$has_wrapper")
+    BSMF_LAUNCHER_HAS_DESKTOP+=("$has_desktop")
+    BSMF_LAUNCHER_ORPHAN+=("$orphan")
+}
+
+refresh_managed_launchers() {
+    local i slug wrapper desktop base had_nullglob=0
+    local -A seen=()
+    BSMF_LAUNCHER_SLUGS=()
+    BSMF_LAUNCHER_LABELS=()
+    BSMF_LAUNCHER_DIRS=()
+    BSMF_LAUNCHER_HAS_WRAPPER=()
+    BSMF_LAUNCHER_HAS_DESKTOP=()
+    BSMF_LAUNCHER_ORPHAN=()
+    refresh_beat_saber_instances || true
+    for ((i = 0; i < ${#BSMF_BS_NAMES[@]}; i++)); do
+        slug="$(sanitize_version_slug "${BSMF_BS_NAMES[$i]}")"
+        [[ -n "$slug" ]] || continue
+        seen["$slug"]=1
+        _launcher_record "$slug" "${BSMF_BS_NAMES[$i]}" "${BSMF_BS_PATHS[$i]}" 0
+    done
+    shopt -q nullglob && had_nullglob=1
+    shopt -s nullglob
+    for wrapper in "$LOCAL_BIN"/beat-saber-*-modded; do
+        base="$(basename -- "$wrapper")"
+        slug="${base#beat-saber-}"
+        slug="${slug%-modded}"
+        [[ -n "$slug" && -z "${seen[$slug]:-}" ]] || continue
+        seen["$slug"]=1
+        _launcher_record "$slug" "$slug" "" 1
+    done
+    for desktop in "$APPLICATIONS_DIR"/beat-saber-*-modded.desktop; do
+        base="$(basename -- "$desktop" .desktop)"
+        slug="${base#beat-saber-}"
+        slug="${slug%-modded}"
+        [[ -n "$slug" && -z "${seen[$slug]:-}" ]] || continue
+        seen["$slug"]=1
+        _launcher_record "$slug" "$slug" "" 1
+    done
+    if [[ "$had_nullglob" -eq 0 ]]; then
+        shopt -u nullglob
+    fi
+    return 0
+}
+
 create_beat_saber_wrapper() {
     local version="$1"
     local bs_dir="${2:-}"
@@ -3547,6 +3781,31 @@ create_desktop_shortcuts() {
     if command -v update-desktop-database >/dev/null 2>&1; then
         run_cmd update-desktop-database "$APPLICATIONS_DIR" || true
     fi
+}
+
+install_beat_saber_launcher() {
+    local version="$1"
+    local bs_dir="$2"
+    local wrapper slug icon=""
+    wrapper="$(create_beat_saber_wrapper "$version" "$bs_dir")" || return 1
+    slug="$(sanitize_version_slug "$version")"
+    icon="$(find_bsmanager_icon 2>/dev/null || true)"
+    write_desktop_entry \
+        "$(launcher_desktop_path "$slug")" \
+        "Beat Saber ${version} Modded" \
+        "$(desktop_escape_exec "$wrapper")" \
+        "$icon" \
+        "Steam Frame modded Beat Saber launcher"
+    success "Desktop entry: beat-saber-${slug}-modded.desktop"
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        run_cmd update-desktop-database "$APPLICATIONS_DIR" || true
+    fi
+    if steam_shortcuts_cdp "$version" "$bs_dir"; then
+        :
+    else
+        warn "$(t launcher_steam_left)"
+    fi
+    success "$(t launcher_added "$version")"
 }
 
 # =============================================================================
@@ -3786,6 +4045,125 @@ try:
 finally:
     ws.close()
 PY
+}
+
+# Remove only a shortcut whose exe is this helper's wrapper. Never edit shortcuts.vdf.
+steam_shortcut_remove() {
+    local slug="$1"
+    local wrapper port venv status=""
+    wrapper="$(launcher_wrapper_path "$slug")"
+    if ! port="$(detect_steam_cdp_port)"; then
+        warn "$(t launcher_steam_left)"
+        return 0
+    fi
+    venv="$(ensure_cdp_venv)" || {
+        warn "$(t launcher_steam_left)"
+        return 0
+    }
+    if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
+        info "[dry-run] CDP remove Steam shortcut for $wrapper"
+        return 0
+    fi
+    status="$("$venv/bin/python" - "$port" "$wrapper" <<'PY'
+import json, sys, urllib.request
+
+try:
+    import websocket
+except ImportError:
+    print("left", file=sys.stderr)
+    sys.exit(2)
+
+port, wrapper = sys.argv[1], sys.argv[2]
+
+def get(url):
+    with urllib.request.urlopen(url, timeout=5) as r:
+        return json.load(r)
+
+def rpc(ws, method, params=None):
+    global msg_id
+    msg_id += 1
+    payload = {"id": msg_id, "method": method}
+    if params is not None:
+        payload["params"] = params
+    ws.send(json.dumps(payload))
+    while True:
+        raw = ws.recv()
+        data = json.loads(raw)
+        if data.get("id") == msg_id:
+            return data
+
+targets = get(f"http://127.0.0.1:{port}/json/list")
+shared = None
+for t in targets:
+    title = (t.get("title") or "") + " " + (t.get("url") or "")
+    if "SharedJSContext" in title:
+        shared = t
+        break
+if shared is None or not shared.get("webSocketDebuggerUrl"):
+    print("left")
+    sys.exit(0)
+
+msg_id = 0
+ws = websocket.create_connection(shared["webSocketDebuggerUrl"], timeout=10)
+try:
+    detect = rpc(ws, "Runtime.evaluate", {
+        "expression": """
+(() => {
+  const apps = (window.SteamClient && window.SteamClient.Apps) ? window.SteamClient.Apps : null;
+  if (!apps) return {ok:false};
+  const names = Object.getOwnPropertyNames(apps).concat(Object.keys(apps));
+  return {
+    ok: true,
+    hasRemove: typeof apps.RemoveShortcut === 'function',
+    hasGet: typeof apps.GetShortcuts === 'function' || typeof apps.GetAllShortcuts === 'function',
+  };
+})()
+""",
+        "returnByValue": True,
+    })
+    val = ((detect.get("result") or {}).get("result") or {}).get("value") or {}
+    if not val.get("ok") or not val.get("hasRemove") or not val.get("hasGet"):
+        print("left")
+        sys.exit(0)
+    listed = rpc(ws, "Runtime.evaluate", {
+        "expression": """
+(() => {
+  const apps = window.SteamClient.Apps;
+  if (typeof apps.GetShortcuts === 'function') return apps.GetShortcuts();
+  if (typeof apps.GetAllShortcuts === 'function') return apps.GetAllShortcuts();
+  return [];
+})()
+""",
+        "returnByValue": True,
+        "awaitPromise": True,
+    })
+    value = ((listed.get("result") or {}).get("result") or {}).get("value")
+    shortcuts = value if isinstance(value, list) else []
+    if isinstance(value, dict):
+        shortcuts = value.get("shortcuts") or value.get("all_shortcuts") or []
+    removed = 0
+    for sc in shortcuts:
+        if not isinstance(sc, dict):
+            continue
+        exe = str(sc.get("exe") or sc.get("ShortcutPath") or "")
+        appid = sc.get("appid") or sc.get("AppID") or sc.get("appId")
+        if wrapper not in exe or appid is None:
+            continue
+        rpc(ws, "Runtime.evaluate", {
+            "expression": f"window.SteamClient.Apps.RemoveShortcut({json.dumps(appid)})",
+            "returnByValue": True,
+            "awaitPromise": True,
+        })
+        removed += 1
+    print("removed" if removed else "left")
+finally:
+    ws.close()
+PY
+)" || true
+    case "$status" in
+        *removed*) success "$(t launcher_steam_removed)" ;;
+        *) warn "$(t launcher_steam_left)" ;;
+    esac
 }
 
 # =============================================================================
@@ -4169,65 +4547,10 @@ cmd_self_update() {
 }
 
 cmd_uninstall() {
-    info "Uninstall removes the management tool by default."
-    info "BSManager user data and Proton installs are preserved."
-
-    local remove_wrappers=0 remove_desktop=0 remove_bsmanager=0
-
-    if [[ "$FLAG_NON_INTERACTIVE" -eq 1 ]]; then
-        :
-    else
-        if prompt_confirm "$(t ask_remove_wrappers)"; then
-            remove_wrappers=1
-        fi
-        if prompt_confirm "$(t ask_remove_desktop)"; then
-            remove_desktop=1
-        fi
-        if prompt_confirm "$(t ask_remove_bsmanager)"; then
-            remove_bsmanager=1
-        fi
-        if [[ "$FLAG_REMOVE_DATA" -eq 1 ]]; then
-            warn "REQUESTED: remove BSManager user data ($BSMANAGER_DATA_DIR)"
-            if prompt_confirm "Type-confirm destructive data removal?"; then
-                if prompt_confirm "Really delete Beat Saber instances and BSManager data?"; then
-                    if is_safe_remove_path "$BSMANAGER_DATA_DIR" || [[ "$BSMANAGER_DATA_DIR" == "$XDG_DATA_HOME/BSManager" ]]; then
-                        # Extra check: only allow exact data dir
-                        if [[ "$BSMANAGER_DATA_DIR" == "$XDG_DATA_HOME/BSManager" && -n "$BSMANAGER_DATA_DIR" ]]; then
-                            if [[ "$FLAG_DRY_RUN" -eq 1 ]]; then
-                                info "[dry-run] rm -rf $BSMANAGER_DATA_DIR"
-                            else
-                                rm -rf -- "$BSMANAGER_DATA_DIR"
-                            fi
-                            warn "Removed BSManager user data"
-                        fi
-                    fi
-                fi
-            fi
-        fi
+    info "$(t uninstall_frame_about)"
+    if ! prompt_confirm "$(t ask_remove_frame)"; then
+        return 0
     fi
-
-    if [[ "$remove_wrappers" -eq 1 ]]; then
-        local w
-        for w in "$LOCAL_BIN"/beat-saber-*-modded; do
-            [[ -e "$w" ]] || continue
-            safe_rm "$w"
-        done
-    fi
-    if [[ "$remove_desktop" -eq 1 ]]; then
-        local d
-        for d in "$APPLICATIONS_DIR"/beat-saber-*-modded.desktop \
-            "$APPLICATIONS_DIR"/bs-manager.desktop \
-            "$APPLICATIONS_DIR"/bsmanager-frame.desktop; do
-            [[ -e "$d" ]] || continue
-            safe_rm "$d"
-        done
-    fi
-    if [[ "$remove_bsmanager" -eq 1 ]]; then
-        [[ -e "$BSMANAGER_BIN" ]] && safe_rm "$BSMANAGER_BIN"
-        [[ -d "$BSMANAGER_INSTALL_DIR" ]] && safe_rm "$BSMANAGER_INSTALL_DIR"
-    fi
-
-    # Always remove this tool's own desktop entry with the tool itself
     if [[ -e "$APPLICATIONS_DIR/bsmanager-frame.desktop" ]]; then
         safe_rm "$APPLICATIONS_DIR/bsmanager-frame.desktop"
     fi
@@ -4235,7 +4558,53 @@ cmd_uninstall() {
     [[ -d "$TOOL_DATA_DIR" ]] && safe_rm "$TOOL_DATA_DIR"
     [[ -d "$TOOL_STATE_DIR" ]] && safe_rm "$TOOL_STATE_DIR"
     success "$(t uninstall_done)"
-    log_action OK "uninstall"
+    log_action OK "uninstall_frame"
+}
+
+cmd_uninstall_bsmanager() {
+    local have_app=0
+    info "$(t uninstall_bsm_about)"
+    if [[ -e "$BSMANAGER_INSTALL_DIR/bs-manager" || -L "$BSMANAGER_BIN" || -e "$BSMANAGER_BIN" || -e "$APPLICATIONS_DIR/bs-manager.desktop" ]]; then
+        have_app=1
+    fi
+    if [[ "$have_app" -eq 0 && ! -d "$BSMANAGER_CONFIG_DIR" ]]; then
+        info "$(t uninstall_bsm_missing)"
+        if is_bsmanager_flatpak_user_installed || is_bsmanager_flatpak_system_installed; then
+            info "$(t bsm_flatpak_left)"
+        fi
+        return 0
+    fi
+    if [[ "$FLAG_REMOVE_DATA" -eq 1 ]]; then
+        info "$(t launcher_instance_kept)"
+    fi
+    if is_bsmanager_running; then
+        error "$(t bsm_running_uninstall)"
+        return 1
+    fi
+    if [[ "$have_app" -eq 1 ]]; then
+        if ! prompt_confirm "$(t ask_remove_bsm_app)"; then
+            return 0
+        fi
+        [[ -e "$BSMANAGER_BIN" || -L "$BSMANAGER_BIN" ]] && safe_rm "$BSMANAGER_BIN"
+        [[ -e "$APPLICATIONS_DIR/bs-manager.desktop" ]] && safe_rm "$APPLICATIONS_DIR/bs-manager.desktop"
+        [[ -d "$BSMANAGER_INSTALL_DIR" ]] && safe_rm "$BSMANAGER_INSTALL_DIR"
+        success "$(t bsm_app_removed)"
+        log_action OK "uninstall_bsmanager_app"
+    else
+        info "$(t uninstall_bsm_missing)"
+    fi
+    if [[ -d "$BSMANAGER_CONFIG_DIR" ]]; then
+        if prompt_confirm_keep "$(t ask_remove_bsm_config "$BSMANAGER_CONFIG_DIR")"; then
+            safe_rm "$BSMANAGER_CONFIG_DIR"
+            success "$(t bsm_config_removed)"
+            log_action OK "uninstall_bsmanager_config"
+        else
+            info "$(t bsm_config_kept)"
+        fi
+    fi
+    if is_bsmanager_flatpak_user_installed || is_bsmanager_flatpak_system_installed; then
+        info "$(t bsm_flatpak_left)"
+    fi
 }
 
 # =============================================================================
@@ -4323,11 +4692,89 @@ cmd_setup() {
 # Interactive menu / CLI
 # =============================================================================
 
+remove_managed_launcher() {
+    local slug="$1"
+    local label="$2"
+    local wrapper desktop
+    wrapper="$(launcher_wrapper_path "$slug")"
+    desktop="$(launcher_desktop_path "$slug")"
+    steam_shortcut_remove "$slug" || true
+    [[ -e "$wrapper" ]] && safe_rm "$wrapper"
+    [[ -e "$desktop" ]] && safe_rm "$desktop"
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        run_cmd update-desktop-database "$APPLICATIONS_DIR" || true
+    fi
+    success "$(t launcher_deleted "$label")"
+    info "$(t launcher_instance_kept)"
+    log_action OK "launcher_removed slug=$slug"
+}
+
 menu_launchers() {
-    select_beat_saber_version || return 1
-    create_beat_saber_wrapper "$BSMF_SELECTED_BS_NAME" "$BSMF_SELECTED_BS_DIR" >/dev/null || return 1
-    success "$(t launcher_ready "$LOCAL_BIN/beat-saber-$(sanitize_version_slug "$BSMF_SELECTED_BS_NAME")-modded")"
-    info "$(t launcher_hint_menu5)"
+    local choice="" i=0 count=0 answer=""
+    local wrap_s="" desk_s="" orphan_s=""
+    tty_open || true
+    while true; do
+        refresh_managed_launchers || true
+        count="${#BSMF_LAUNCHER_SLUGS[@]}"
+        tty_printf '\n%s\n' "$(t launcher_title)"
+        if [[ "$count" -eq 0 ]]; then
+            tty_printf '%s\n' "$(t bs_versions_none)"
+        fi
+        for ((i = 0; i < count; i++)); do
+            if [[ "${BSMF_LAUNCHER_HAS_WRAPPER[$i]}" -eq 1 ]]; then
+                wrap_s="$(t launcher_present)"
+            else
+                wrap_s="$(t launcher_absent)"
+            fi
+            if [[ "${BSMF_LAUNCHER_HAS_DESKTOP[$i]}" -eq 1 ]]; then
+                desk_s="$(t launcher_present)"
+            else
+                desk_s="$(t launcher_absent)"
+            fi
+            orphan_s=""
+            if [[ "${BSMF_LAUNCHER_ORPHAN[$i]}" -eq 1 ]]; then
+                orphan_s="$(t launcher_orphan)"
+            fi
+            tty_printf '  %d) %s\n' "$((i + 1))" \
+                "$(t launcher_line "${BSMF_LAUNCHER_LABELS[$i]}" "$wrap_s" "$desk_s" "$orphan_s")"
+            if [[ -n "${BSMF_LAUNCHER_DIRS[$i]}" ]]; then
+                tty_printf '     %s\n' "${BSMF_LAUNCHER_DIRS[$i]}"
+            fi
+        done
+        tty_printf '\na) %s\n' "$(t launcher_add)"
+        tty_printf 'd) %s\n' "$(t launcher_delete)"
+        tty_printf '0) %s\n\n' "$(t launcher_back)"
+        choice="$(prompt_reply "$(t menu_select)" "")"
+        choice="${choice%%[[:space:]]*}"
+        case "$choice" in
+            a|A)
+                if select_beat_saber_version; then
+                    install_beat_saber_launcher "$BSMF_SELECTED_BS_NAME" "$BSMF_SELECTED_BS_DIR" || true
+                fi
+                ;;
+            d|D)
+                if [[ "$count" -eq 0 ]]; then
+                    info "$(t launcher_none_delete)"
+                    continue
+                fi
+                answer="$(prompt_reply "$(t launcher_pick)" "")"
+                if [[ ! "$answer" =~ ^[0-9]+$ ]] || ((answer < 1 || answer > count)); then
+                    tty_printf '%s\n' "$(t menu_invalid)"
+                    continue
+                fi
+                i=$((answer - 1))
+                if [[ "${BSMF_LAUNCHER_HAS_WRAPPER[$i]}" -eq 0 && "${BSMF_LAUNCHER_HAS_DESKTOP[$i]}" -eq 0 ]]; then
+                    info "$(t launcher_none_delete)"
+                    continue
+                fi
+                if prompt_confirm "$(t launcher_confirm_delete "${BSMF_LAUNCHER_LABELS[$i]}")"; then
+                    remove_managed_launcher "${BSMF_LAUNCHER_SLUGS[$i]}" "${BSMF_LAUNCHER_LABELS[$i]}" || true
+                fi
+                ;;
+            0|q|Q) return 0 ;;
+            *) tty_printf '%s\n' "$(t menu_invalid)" ;;
+        esac
+    done
 }
 
 show_menu() {
@@ -4369,17 +4816,12 @@ show_menu() {
         tty_printf '1) %s\n' "$(t menu_1)"
         tty_printf '2) %s\n' "$(t menu_2)"
         tty_printf '3) %s\n' "$(t menu_3)"
-        if [[ "$n_bs" -gt 0 ]]; then
-            tty_printf '4) %s (%s)\n' "$(t menu_4)" "$n_bs"
-            tty_printf '5) %s (%s)\n' "$(t menu_5)" "$n_bs"
-        else
-            tty_printf '4) %s\n' "$(t menu_4)"
-            tty_printf '5) %s\n' "$(t menu_5)"
-        fi
-        tty_printf '6) %s\n' "$(t menu_6)"
-        tty_printf '7) %s\n' "$(t menu_7)"
-        tty_printf '8) %s\n' "$(t menu_8)"
-        tty_printf '9) %s\n' "$(t menu_9)"
+        tty_printf '4) %s\n' "$(t menu_4)"
+        tty_printf '5) %s\n' "$(t menu_6)"
+        tty_printf '6) %s\n' "$(t menu_7)"
+        tty_printf '7) %s\n' "$(t menu_8)"
+        tty_printf '8) %s\n' "$(t menu_uninstall_frame)"
+        tty_printf '9) %s\n' "$(t menu_uninstall_bsmanager)"
         tty_printf '10) %s\n' "$(t menu_10)"
         tty_printf '0) %s\n\n' "$(t menu_0)"
         choice="$(prompt_reply "$(t menu_select)" "")"
@@ -4389,11 +4831,11 @@ show_menu() {
             2) run_menu_action update cmd_update ;;
             3) run_menu_action proton cmd_proton ;;
             4) run_menu_action launchers menu_launchers ;;
-            5) run_menu_action shortcuts cmd_shortcuts ;;
-            6) run_menu_action diagnose cmd_diagnose ;;
-            7) run_menu_action backup cmd_backup ;;
-            8) run_menu_action self-update cmd_self_update ;;
-            9) run_menu_action uninstall cmd_uninstall ;;
+            5) run_menu_action diagnose cmd_diagnose ;;
+            6) run_menu_action backup cmd_backup ;;
+            7) run_menu_action self-update cmd_self_update ;;
+            8) run_menu_action uninstall cmd_uninstall ;;
+            9) run_menu_action uninstall-bsmanager cmd_uninstall_bsmanager ;;
             10|l|L)
                 prompt_language_selection || true
                 ;;
@@ -4420,12 +4862,16 @@ Commands:
   update           Update BSManager from the latest valid steam-frame-* release
   setup            Alias for install
   proton           Ensure Proton stack and configure BSManager paths
-  shortcuts        Create/repair wrappers, desktop entries, Steam shortcuts
+  shortcuts        Add or repair the Beat Saber launcher, desktop entry, and Steam shortcut
   diagnose         Print diagnostics report
   backup           Backup small integration/config files
   self-update      Update this tool from GitHub
   install-self     Install this script to ~/.local/bin/bsmanager-frame
-  uninstall        Remove this tool (optional extras with prompts)
+  uninstall        Remove bsmanager-frame only
+  uninstall-bsmanager
+                   Remove the BSManager application. Settings are kept unless
+                   you explicitly confirm their removal. Instances, maps, and
+                   saves are not removed.
   help             Show this help
   version          Show version
 
@@ -4447,9 +4893,9 @@ Command options:
   --compatdata <path>  Explicit compatdata path
   --bsmanager-url URL  Custom BSManager asset URL
   --bsmanager-dir PATH Local unpacked native BSManager build
-  --remove-data        With uninstall: allow deleting BSManager user data
-                       (still requires interactive confirmation; --yes alone
-                       does NOT delete game data)
+  --remove-data        Accepted for compatibility. It does not delete Beat Saber
+                       instances, maps, or saves. BSManager settings are removed
+                       only by an explicit answer when uninstalling BSManager.
 
 Environment:
   BSMF_LANG, BSMF_ALLOW_FLATPAK, BSMF_PROTON_STABLE_APPID,
@@ -4589,6 +5035,7 @@ main() {
         self-update) run_cli_command self-update cmd_self_update || rc=$? ;;
         install-self) run_cli_command install-self install_self || rc=$? ;;
         uninstall) run_cli_command uninstall cmd_uninstall || rc=$? ;;
+        uninstall-bsmanager) run_cli_command uninstall-bsmanager cmd_uninstall_bsmanager || rc=$? ;;
         help) usage ;;
         version) printf '%s\n' "$VERSION" ;;
         *)
@@ -4601,7 +5048,10 @@ main() {
 }
 
 if [[ "${BSMF_LIB_ONLY:-0}" == "1" ]]; then
-    return 0 2>/dev/null || exit 0
+    if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+        return 0
+    fi
+    exit 0
 fi
 
 main "$@" || exit $?

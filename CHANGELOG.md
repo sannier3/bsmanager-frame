@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Official `Zagrios/bs-manager` native release lookup is no longer the normal
   Steam Frame install/update path, and it is not a silent fallback.
+- The launcher menu lists installed versions and leftover launchers. Adding a
+  version rewrites its command, desktop entry, and Steam shortcut. Removing a
+  launcher leaves the Beat Saber instance, maps, and saves in place.
+- Uninstall is split: `bsmanager-frame` removes only the helper. BSManager
+  removal asks before deleting `~/.config/bs-manager`. Enter keeps those
+  settings. Instances, maps, saves, Proton, and Steam tools are not offered.
 - Flatpak remains an explicit opt-in (`--allow-flatpak` / `BSMF_ALLOW_FLATPAK`)
   and is documented as experimental. Official Flatpak v1.6.0 is not a
   Frame-compatible alternative: it predates PR #1136.

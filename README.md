@@ -38,8 +38,8 @@ Steam Frame, Steam, SteamOS, Beat Saber, and related marks belong to their respe
 - Optional Flatpak path, experimental and not validated (`--allow-flatpak` only)
 - Configure Proton paths, creating `config.json` when BSManager has not launched yet
 - Create launch wrappers for modded Beat Saber instances
-- Create / repair desktop shortcuts
-- Create / repair Steam shortcuts when a safe live API is available
+- Create, repair, and remove Beat Saber launchers (command, desktop entry, and Steam shortcut)
+- Uninstall bsmanager-frame and BSManager separately. BSManager settings are optional; instances, maps, and saves stay
 - Diagnostics report suitable for GitHub issues
 - Configuration backups
 - Self-update
@@ -90,6 +90,7 @@ bsmanager-frame diagnose
 bsmanager-frame backup
 bsmanager-frame self-update
 bsmanager-frame uninstall
+bsmanager-frame uninstall-bsmanager
 ```
 
 Common flags:

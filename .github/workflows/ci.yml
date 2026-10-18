@@ -38,3 +38,6 @@ jobs:
 
       - name: Steam install monitor and archive tests
         run: bash tests/steam-install-monitor.sh
+
+      - name: Launcher and uninstall tests
+        run: bash tests/launcher-manage.sh
