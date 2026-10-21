@@ -5781,25 +5781,25 @@ remove_managed_launcher() {
 
 launcher_manage_one() {
     local slug="$1"
-    local i=0 found=0 label="" dir="" choice="" orphan=0
+    local i=0 entry_found=0 label="" dir="" choice="" orphan=0
     local menu_state="" bureau_state="" steam_state="" steam_report="" steam_rows=""
     local kind="" appid="" name="" exe=""
     while true; do
         refresh_managed_launchers || true
-        found=0
+        entry_found=0
         label=""
         dir=""
         orphan=0
         for ((i = 0; i < ${#BSMF_LAUNCHER_SLUGS[@]}; i++)); do
             if [[ "${BSMF_LAUNCHER_SLUGS[$i]}" == "$slug" ]]; then
-                found=1
+                entry_found=1
                 label="${BSMF_LAUNCHER_LABELS[$i]}"
                 dir="${BSMF_LAUNCHER_DIRS[$i]}"
                 orphan="${BSMF_LAUNCHER_ORPHAN[$i]}"
                 break
             fi
         done
-        [[ "$found" -eq 1 ]] || return 0
+        [[ "$entry_found" -eq 1 ]] || return 0
         if [[ -e "$(launcher_desktop_path "$slug")" || -L "$(launcher_desktop_path "$slug")" ]]; then
             menu_state="$(t launcher_present)"
         else
